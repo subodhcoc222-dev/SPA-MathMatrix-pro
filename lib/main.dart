@@ -556,7 +556,7 @@ enum MathMode {
 }
 
 // -------------------------------------------------------------
-// 3. QUOTA MODAL (UPDATED: 10, 20, 30, 40, 50)
+// 3. QUOTA MODAL
 // -------------------------------------------------------------
 class QuotaSelectionSheet extends StatefulWidget {
   final MathMode mode;
@@ -568,7 +568,6 @@ class QuotaSelectionSheet extends StatefulWidget {
 }
 
 class _QuotaSelectionSheetState extends State<QuotaSelectionSheet> {
-  // Updated Quota List
   final List<int> _quotaOptions = [10, 20, 30, 40, 50];
   int _selectedQuota = 20;
   int _chainLength = 4;
@@ -772,7 +771,7 @@ class _QuotaSelectionSheetState extends State<QuotaSelectionSheet> {
 }
 
 // -------------------------------------------------------------
-// 4. STANDARD PRACTICE SCREEN
+// 4. STANDARD PRACTICE SCREEN (WITH EDGE GLOW EFFECT)
 // -------------------------------------------------------------
 class StandardPracticeScreen extends StatefulWidget {
   final MathMode mode;
@@ -807,6 +806,9 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
 
   HighScoreRecord? _personalBest;
   double _ghostProgress = 0.0;
+
+  // Edge Glow Controller
+  Color _edgeGlowColor = Colors.transparent;
 
   @override
   void initState() {
@@ -994,13 +996,20 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
     final entered = int.tryParse(_userAnswer) ?? -999999;
     final isCorrect = entered == _correctAnswer;
 
-    HapticFeedback.lightImpact();
-
     if (isCorrect) {
       _correctCount++;
+      HapticFeedback.lightImpact();
+      setState(() => _edgeGlowColor = const Color(0xFF10B981).withOpacity(0.7));
     } else {
       _wrongCount++;
+      HapticFeedback.heavyImpact();
+      setState(() => _edgeGlowColor = Colors.redAccent.withOpacity(0.7));
     }
+
+    // Reset Glow after 160ms
+    Future.delayed(const Duration(milliseconds: 160), () {
+      if (mounted) setState(() => _edgeGlowColor = Colors.transparent);
+    });
 
     _currentIndex++;
 
@@ -1036,163 +1045,172 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
     final double userProgress = (_currentIndex / widget.totalQuota).clamp(0.0, 1.0);
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 22),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E2230),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${_currentIndex + 1} / ${widget.totalQuota}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1E2230),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.timer_outlined, size: 15, color: Colors.cyanAccent),
-                        const SizedBox(width: 5),
-                        Text(
-                          _timeString,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.cyanAccent),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            if (_personalBest != null)
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF161922),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withOpacity(0.05)),
-                ),
-                child: Column(
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: _edgeGlowColor,
+            width: _edgeGlowColor == Colors.transparent ? 0 : 5.0,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.person, size: 14, color: Color(0xFF10B981)),
-                            const SizedBox(width: 4),
-                            Text('You (${(_currentIndex)})', style: const TextStyle(fontSize: 11, color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                        const Row(
-                          children: [
-                            Text('👻 Best Record', style: TextStyle(fontSize: 11, color: Colors.amberAccent, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ],
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 22),
+                      onPressed: () => Navigator.pop(context),
                     ),
-                    const SizedBox(height: 6),
-                    Stack(
-                      children: [
-                        Container(height: 8, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(4))),
-                        FractionallySizedBox(
-                          widthFactor: _ghostProgress,
-                          child: Container(height: 8, decoration: BoxDecoration(color: Colors.amberAccent.withOpacity(0.4), borderRadius: BorderRadius.circular(4))),
-                        ),
-                        FractionallySizedBox(
-                          widthFactor: userProgress,
-                          child: Container(height: 8, decoration: BoxDecoration(color: const Color(0xFF10B981), borderRadius: BorderRadius.circular(4))),
-                        ),
-                      ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E2230),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${_currentIndex + 1} / ${widget.totalQuota}',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E2230),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.timer_outlined, size: 15, color: Colors.cyanAccent),
+                          const SizedBox(width: 5),
+                          Text(
+                            _timeString,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.cyanAccent),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
 
-            if (isRtl)
-              Container(
-                margin: const EdgeInsets.only(top: 2),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
+              if (_personalBest != null)
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161922),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withOpacity(0.05)),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.person, size: 14, color: Color(0xFF10B981)),
+                              const SizedBox(width: 4),
+                              Text('You (${(_currentIndex)})', style: const TextStyle(fontSize: 11, color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const Row(
+                            children: [
+                              Text('👻 Best Record', style: TextStyle(fontSize: 11, color: Colors.amberAccent, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Stack(
+                        children: [
+                          Container(height: 8, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(4))),
+                          FractionallySizedBox(
+                            widthFactor: _ghostProgress,
+                            child: Container(height: 8, decoration: BoxDecoration(color: Colors.amberAccent.withOpacity(0.4), borderRadius: BorderRadius.circular(4))),
+                          ),
+                          FractionallySizedBox(
+                            widthFactor: userProgress,
+                            child: Container(height: 8, decoration: BoxDecoration(color: const Color(0xFF10B981), borderRadius: BorderRadius.circular(4))),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                child: const Text(
-                  '⇄ RTL Active (Unit ➔ Tens)',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
-                ),
-              ),
 
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF161922),
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: Colors.white.withOpacity(0.06), width: 1.5),
+              if (isRtl)
+                Container(
+                  margin: const EdgeInsets.only(top: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                    '⇄ RTL Active (Unit ➔ Tens)',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                  ),
                 ),
-                child: Center(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            _questionText,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 34,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                              color: Colors.white,
+
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161922),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: Colors.white.withOpacity(0.06), width: 1.5),
+                  ),
+                  child: Center(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              _questionText,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 34,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0C0E14),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.5), width: 1.5),
-                          ),
-                          child: Text(
-                            _userAnswer.isEmpty ? '?' : _userAnswer,
-                            style: TextStyle(
-                              fontSize: 36,
-                              fontWeight: FontWeight.bold,
-                              color: _userAnswer.isEmpty ? Colors.white24 : const Color(0xFF818CF8),
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0C0E14),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.5), width: 1.5),
+                            ),
+                            child: Text(
+                              _userAnswer.isEmpty ? '?' : _userAnswer,
+                              style: TextStyle(
+                                fontSize: 36,
+                                fontWeight: FontWeight.bold,
+                                color: _userAnswer.isEmpty ? Colors.white24 : const Color(0xFF818CF8),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
 
-            NumpadWithSubmit(onKeyPress: _onKeyPress),
-            const SizedBox(height: 10),
-          ],
+              NumpadWithSubmit(onKeyPress: _onKeyPress),
+              const SizedBox(height: 10),
+            ],
+          ),
         ),
       ),
     );
@@ -1237,6 +1255,7 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
 
   Timer? _stepTimer;
   late Stopwatch _stopwatch;
+  Color _edgeGlowColor = Colors.transparent;
 
   @override
   void initState() {
@@ -1312,11 +1331,22 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
     if (val == 'SUBMIT') {
       if (_userAnswer.isEmpty) return;
       final entered = int.tryParse(_userAnswer) ?? -99999;
-      if (entered == _correctAnswer) {
+      final isCorrect = entered == _correctAnswer;
+
+      if (isCorrect) {
         _correctCount++;
+        HapticFeedback.lightImpact();
+        setState(() => _edgeGlowColor = const Color(0xFF10B981).withOpacity(0.7));
       } else {
         _wrongCount++;
+        HapticFeedback.heavyImpact();
+        setState(() => _edgeGlowColor = Colors.redAccent.withOpacity(0.7));
       }
+
+      Future.delayed(const Duration(milliseconds: 160), () {
+        if (mounted) setState(() => _edgeGlowColor = Colors.transparent);
+      });
+
       _currentIndex++;
       if (_currentIndex >= widget.totalQuota) {
         _finish();
@@ -1354,90 +1384,99 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
     final currentText = _isFlashing ? _chainSteps[_currentStepIndex] : (_userAnswer.isEmpty ? '?' : _userAnswer);
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 22),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  Text(
-                    '${_currentIndex + 1} / ${widget.totalQuota}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.replay_rounded, color: Colors.cyanAccent),
-                    onPressed: () {
-                      _stepTimer?.cancel();
-                      setState(() => _userAnswer = '');
-                      _playChain();
-                    },
-                  ),
-                ],
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: _edgeGlowColor,
+            width: _edgeGlowColor == Colors.transparent ? 0 : 5.0,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 22),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    Text(
+                      '${_currentIndex + 1} / ${widget.totalQuota}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.replay_rounded, color: Colors.cyanAccent),
+                      onPressed: () {
+                        _stepTimer?.cancel();
+                        setState(() => _userAnswer = '');
+                        _playChain();
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              decoration: BoxDecoration(color: const Color(0xFF161922), borderRadius: BorderRadius.circular(14)),
-              child: Row(
-                children: [
-                  const Icon(Icons.speed, size: 16, color: Colors.white60),
-                  const SizedBox(width: 8),
-                  Text('Speed: ${_speedFactor.toStringAsFixed(1)}x', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  Expanded(
-                    child: Slider(
-                      value: _speedFactor,
-                      min: 0.5,
-                      max: 2.0,
-                      divisions: 6,
-                      activeColor: const Color(0xFF6366F1),
-                      inactiveColor: Colors.white12,
-                      onChanged: (v) => setState(() => _speedFactor = v),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                decoration: BoxDecoration(color: const Color(0xFF161922), borderRadius: BorderRadius.circular(14)),
+                child: Row(
+                  children: [
+                    const Icon(Icons.speed, size: 16, color: Colors.white60),
+                    const SizedBox(width: 8),
+                    Text('Speed: ${_speedFactor.toStringAsFixed(1)}x', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    Expanded(
+                      child: Slider(
+                        value: _speedFactor,
+                        min: 0.5,
+                        max: 2.0,
+                        divisions: 6,
+                        activeColor: const Color(0xFF6366F1),
+                        inactiveColor: Colors.white12,
+                        onChanged: (v) => setState(() => _speedFactor = v),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161922),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: !_isFlashing ? const Color(0xFF10B981).withOpacity(0.4) : Colors.white.withOpacity(0.06),
+                      width: 1.5,
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF161922),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: !_isFlashing ? const Color(0xFF10B981).withOpacity(0.4) : Colors.white.withOpacity(0.06),
-                    width: 1.5,
-                  ),
-                ),
-                child: Center(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 90),
-                    child: Text(
-                      currentText,
-                      key: ValueKey<String>('$currentText$_isFlashing'),
-                      style: TextStyle(
-                        fontSize: 64,
-                        fontWeight: FontWeight.w900,
-                        color: _isFlashing ? const Color(0xFF38BDF8) : const Color(0xFF10B981),
-                        letterSpacing: 2,
+                  child: Center(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 90),
+                      child: Text(
+                        currentText,
+                        key: ValueKey<String>('$currentText$_isFlashing'),
+                        style: TextStyle(
+                          fontSize: 64,
+                          fontWeight: FontWeight.w900,
+                          color: _isFlashing ? const Color(0xFF38BDF8) : const Color(0xFF10B981),
+                          letterSpacing: 2,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
 
-            NumpadWithSubmit(onKeyPress: _onKeyPress, enabled: !_isFlashing),
-            const SizedBox(height: 10),
-          ],
+              NumpadWithSubmit(onKeyPress: _onKeyPress, enabled: !_isFlashing),
+              const SizedBox(height: 10),
+            ],
+          ),
         ),
       ),
     );
@@ -1480,6 +1519,7 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
 
   bool _isSpeaking = false;
   late Stopwatch _stopwatch;
+  Color _edgeGlowColor = Colors.transparent;
 
   @override
   void initState() {
@@ -1542,11 +1582,22 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
     if (val == 'SUBMIT') {
       if (_userAnswer.isEmpty) return;
       final entered = int.tryParse(_userAnswer) ?? -99999;
-      if (entered == _correctAnswer) {
+      final isCorrect = entered == _correctAnswer;
+
+      if (isCorrect) {
         _correctCount++;
+        HapticFeedback.lightImpact();
+        setState(() => _edgeGlowColor = const Color(0xFF10B981).withOpacity(0.7));
       } else {
         _wrongCount++;
+        HapticFeedback.heavyImpact();
+        setState(() => _edgeGlowColor = Colors.redAccent.withOpacity(0.7));
       }
+
+      Future.delayed(const Duration(milliseconds: 160), () {
+        if (mounted) setState(() => _edgeGlowColor = Colors.transparent);
+      });
+
       _currentIndex++;
       if (_currentIndex >= widget.totalQuota) {
         _finish();
@@ -1582,82 +1633,91 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 22),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  Text(
-                    '${_currentIndex + 1} / ${widget.totalQuota}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.volume_up_rounded, color: Colors.cyanAccent),
-                    onPressed: _playAudioSequence,
-                  ),
-                ],
-              ),
-            ),
-
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF161922),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withOpacity(0.06), width: 1.5),
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: _edgeGlowColor,
+            width: _edgeGlowColor == Colors.transparent ? 0 : 5.0,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 22),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    Text(
+                      '${_currentIndex + 1} / ${widget.totalQuota}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.volume_up_rounded, color: Colors.cyanAccent),
+                      onPressed: _playAudioSequence,
+                    ),
+                  ],
                 ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        _isSpeaking ? Icons.graphic_eq_rounded : Icons.headphones_rounded,
-                        size: 70,
-                        color: _isSpeaking ? Colors.cyanAccent : Colors.white30,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _isSpeaking ? 'Listening...' : 'Type your answer',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: _isSpeaking ? Colors.cyanAccent : Colors.white54,
+              ),
+
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161922),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.white.withOpacity(0.06), width: 1.5),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _isSpeaking ? Icons.graphic_eq_rounded : Icons.headphones_rounded,
+                          size: 70,
+                          color: _isSpeaking ? Colors.cyanAccent : Colors.white30,
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0C0E14),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.5), width: 1.5),
-                        ),
-                        child: Text(
-                          _userAnswer.isEmpty ? '?' : _userAnswer,
+                        const SizedBox(height: 16),
+                        Text(
+                          _isSpeaking ? 'Listening...' : 'Type your answer',
                           style: TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                            color: _userAnswer.isEmpty ? Colors.white24 : const Color(0xFF818CF8),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: _isSpeaking ? Colors.cyanAccent : Colors.white54,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 24),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0C0E14),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.5), width: 1.5),
+                          ),
+                          child: Text(
+                            _userAnswer.isEmpty ? '?' : _userAnswer,
+                            style: TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.bold,
+                              color: _userAnswer.isEmpty ? Colors.white24 : const Color(0xFF818CF8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            NumpadWithSubmit(onKeyPress: _onKeyPress, enabled: !_isSpeaking),
-            const SizedBox(height: 10),
-          ],
+              NumpadWithSubmit(onKeyPress: _onKeyPress, enabled: !_isSpeaking),
+              const SizedBox(height: 10),
+            ],
+          ),
         ),
       ),
     );
@@ -1708,6 +1768,7 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
 
   Timer? _animTimer;
   late Stopwatch _stopwatch;
+  Color _edgeGlowColor = Colors.transparent;
 
   @override
   void initState() {
@@ -1778,11 +1839,22 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
     if (val == 'SUBMIT') {
       if (_userAnswer.isEmpty) return;
       final entered = int.tryParse(_userAnswer) ?? -99999;
-      if (entered == _correctAnswer) {
+      final isCorrect = entered == _correctAnswer;
+
+      if (isCorrect) {
         _correctCount++;
+        HapticFeedback.lightImpact();
+        setState(() => _edgeGlowColor = const Color(0xFF10B981).withOpacity(0.7));
       } else {
         _wrongCount++;
+        HapticFeedback.heavyImpact();
+        setState(() => _edgeGlowColor = Colors.redAccent.withOpacity(0.7));
       }
+
+      Future.delayed(const Duration(milliseconds: 160), () {
+        if (mounted) setState(() => _edgeGlowColor = Colors.transparent);
+      });
+
       _currentIndex++;
       if (_currentIndex >= widget.totalQuota) {
         _finish();
@@ -1840,90 +1912,99 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
     }
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 22),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  Text(
-                    '${_currentIndex + 1} / ${widget.totalQuota}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.replay_rounded, color: Colors.cyanAccent),
-                    onPressed: () {
-                      _animTimer?.cancel();
-                      setState(() => _userAnswer = '');
-                      _playFlashSequence();
-                    },
-                  ),
-                ],
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: _edgeGlowColor,
+            width: _edgeGlowColor == Colors.transparent ? 0 : 5.0,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 22),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    Text(
+                      '${_currentIndex + 1} / ${widget.totalQuota}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.replay_rounded, color: Colors.cyanAccent),
+                      onPressed: () {
+                        _animTimer?.cancel();
+                        setState(() => _userAnswer = '');
+                        _playFlashSequence();
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              decoration: BoxDecoration(color: const Color(0xFF161922), borderRadius: BorderRadius.circular(14)),
-              child: Row(
-                children: [
-                  const Icon(Icons.speed, size: 16, color: Colors.white60),
-                  const SizedBox(width: 8),
-                  Text('Speed: ${_speedFactor.toStringAsFixed(1)}x', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  Expanded(
-                    child: Slider(
-                      value: _speedFactor,
-                      min: 0.5,
-                      max: 2.0,
-                      divisions: 6,
-                      activeColor: const Color(0xFF6366F1),
-                      inactiveColor: Colors.white12,
-                      onChanged: (val) => setState(() => _speedFactor = val),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                decoration: BoxDecoration(color: const Color(0xFF161922), borderRadius: BorderRadius.circular(14)),
+                child: Row(
+                  children: [
+                    const Icon(Icons.speed, size: 16, color: Colors.white60),
+                    const SizedBox(width: 8),
+                    Text('Speed: ${_speedFactor.toStringAsFixed(1)}x', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    Expanded(
+                      child: Slider(
+                        value: _speedFactor,
+                        min: 0.5,
+                        max: 2.0,
+                        divisions: 6,
+                        activeColor: const Color(0xFF6366F1),
+                        inactiveColor: Colors.white12,
+                        onChanged: (val) => setState(() => _speedFactor = val),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161922),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: _stage == FlashStage.inputReady ? const Color(0xFF10B981).withOpacity(0.4) : Colors.white.withOpacity(0.06),
+                      width: 1.5,
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF161922),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: _stage == FlashStage.inputReady ? const Color(0xFF10B981).withOpacity(0.4) : Colors.white.withOpacity(0.06),
-                    width: 1.5,
-                  ),
-                ),
-                child: Center(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 90),
-                    child: Text(
-                      centerDisplay,
-                      key: ValueKey<String>('$_stage$centerDisplay'),
-                      style: TextStyle(
-                        fontSize: 68,
-                        fontWeight: FontWeight.w900,
-                        color: displayColor,
-                        letterSpacing: 2,
+                  child: Center(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 90),
+                      child: Text(
+                        centerDisplay,
+                        key: ValueKey<String>('$_stage$centerDisplay'),
+                        style: TextStyle(
+                          fontSize: 68,
+                          fontWeight: FontWeight.w900,
+                          color: displayColor,
+                          letterSpacing: 2,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
 
-            NumpadWithSubmit(onKeyPress: _onKeyPress, enabled: _stage == FlashStage.inputReady),
-            const SizedBox(height: 10),
-          ],
+              NumpadWithSubmit(onKeyPress: _onKeyPress, enabled: _stage == FlashStage.inputReady),
+              const SizedBox(height: 10),
+            ],
+          ),
         ),
       ),
     );
