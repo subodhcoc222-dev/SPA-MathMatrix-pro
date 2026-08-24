@@ -102,7 +102,7 @@ class StorageService {
 }
 
 // -------------------------------------------------------------
-// APP THEME & TITLE
+// APP THEME & ENTRY POINT
 // -------------------------------------------------------------
 class MathTrainerApp extends StatelessWidget {
   const MathTrainerApp({super.key});
@@ -120,7 +120,147 @@ class MathTrainerApp extends StatelessWidget {
           surface: Color(0xFF161922),
         ),
       ),
-      home: const HomeScreen(),
+      home: const SplashScreen(),
+    );
+  }
+}
+
+// -------------------------------------------------------------
+// SPLASH SCREEN
+// -------------------------------------------------------------
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _animController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
+    _fadeAnimation = CurvedAnimation(parent: _animController, curve: Curves.easeIn);
+    _scaleAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOutBack),
+    );
+
+    _animController.forward();
+
+    Timer(const Duration(milliseconds: 1800), () {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const HomeScreen(),
+            transitionsBuilder: (_, animation, __, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+            transitionDuration: const Duration(milliseconds: 400),
+          ),
+        );
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0C0E14),
+      body: Center(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: ScaleTransition(
+            scale: _scaleAnimation,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6366F1).withOpacity(0.35),
+                        blurRadius: 30,
+                        spreadRadius: 8,
+                      ),
+                    ],
+                    border: Border.all(color: const Color(0xFF6366F1), width: 2.5),
+                  ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'icon.png',
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: const Color(0xFF161922),
+                          child: const Icon(Icons.bolt_rounded, size: 60, color: Color(0xFF6366F1)),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'SPA MATHS MATRIX',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Advanced Speed Calculation Engine',
+                  style: TextStyle(fontSize: 12, color: Colors.white54, letterSpacing: 0.5),
+                ),
+                const SizedBox(height: 60),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161922),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withOpacity(0.06)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.code_rounded, size: 16, color: Color(0xFF10B981)),
+                      SizedBox(width: 8),
+                      Text(
+                        'Created & Powered by Subodh',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white70,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -771,7 +911,7 @@ class _QuotaSelectionSheetState extends State<QuotaSelectionSheet> {
 }
 
 // -------------------------------------------------------------
-// 4. STANDARD PRACTICE SCREEN (WITH EDGE GLOW EFFECT)
+// 4. STANDARD PRACTICE SCREEN
 // -------------------------------------------------------------
 class StandardPracticeScreen extends StatefulWidget {
   final MathMode mode;
@@ -806,8 +946,6 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
 
   HighScoreRecord? _personalBest;
   double _ghostProgress = 0.0;
-
-  // Edge Glow Controller
   Color _edgeGlowColor = Colors.transparent;
 
   @override
@@ -1006,7 +1144,6 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
       setState(() => _edgeGlowColor = Colors.redAccent.withOpacity(0.7));
     }
 
-    // Reset Glow after 160ms
     Future.delayed(const Duration(milliseconds: 160), () {
       if (mounted) setState(() => _edgeGlowColor = Colors.transparent);
     });
@@ -1218,7 +1355,7 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
 }
 
 // -------------------------------------------------------------
-// 5. MULTI-STEP CHAIN FLASH SCREEN
+// 5. MULTI-STEP CHAIN FLASH SCREEN (ACTIVE RECALL)
 // -------------------------------------------------------------
 class MultiStepFlashScreen extends StatefulWidget {
   final int chainLength;
@@ -1254,27 +1391,29 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
   double _speedFactor = 1.0;
 
   Timer? _stepTimer;
-  late Stopwatch _stopwatch;
+  final Stopwatch _activeRecallWatch = Stopwatch();
+  int _totalActiveThinkingMillis = 0;
   Color _edgeGlowColor = Colors.transparent;
 
   @override
   void initState() {
     super.initState();
-    _stopwatch = Stopwatch()..start();
     _generateNextChain();
   }
 
   @override
   void dispose() {
     _stepTimer?.cancel();
-    _stopwatch.stop();
+    _activeRecallWatch.stop();
     super.dispose();
   }
 
   void _generateNextChain() {
     _stepTimer?.cancel();
-    _chainSteps.clear();
+    _activeRecallWatch.reset();
+    _activeRecallWatch.stop();
 
+    _chainSteps.clear();
     int runningTotal = _rng.nextInt(80) + 15;
     _chainSteps.add('$runningTotal');
 
@@ -1311,6 +1450,7 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
       } else {
         timer.cancel();
         setState(() => _isFlashing = false);
+        _activeRecallWatch.start();
       }
     });
   }
@@ -1330,6 +1470,10 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
     }
     if (val == 'SUBMIT') {
       if (_userAnswer.isEmpty) return;
+
+      _activeRecallWatch.stop();
+      _totalActiveThinkingMillis += _activeRecallWatch.elapsedMilliseconds;
+
       final entered = int.tryParse(_userAnswer) ?? -99999;
       final isCorrect = entered == _correctAnswer;
 
@@ -1361,8 +1505,10 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
   }
 
   void _finish() {
-    _stopwatch.stop();
     _stepTimer?.cancel();
+    _activeRecallWatch.stop();
+
+    final int pureRecallSeconds = max(1, (_totalActiveThinkingMillis / 1000).round());
 
     Navigator.pushReplacement(
       context,
@@ -1373,7 +1519,7 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
           totalQuota: widget.totalQuota,
           correct: _correctCount,
           wrong: _wrongCount,
-          totalSeconds: _stopwatch.elapsed.inSeconds,
+          totalSeconds: pureRecallSeconds,
         ),
       ),
     );
@@ -1484,7 +1630,7 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
 }
 
 // -------------------------------------------------------------
-// 6. AUDIO MATH (TTS) SCREEN
+// 6. AUDIO MATH (TTS) SCREEN (EXACT END-OF-SPEECH TIMING)
 // -------------------------------------------------------------
 class AudioMathScreen extends StatefulWidget {
   final bool isAddition;
@@ -1518,32 +1664,37 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
   String _userAnswer = '';
 
   bool _isSpeaking = false;
-  late Stopwatch _stopwatch;
+  final Stopwatch _activeRecallWatch = Stopwatch();
+  int _totalActiveThinkingMillis = 0;
   Color _edgeGlowColor = Colors.transparent;
 
   @override
   void initState() {
     super.initState();
-    _stopwatch = Stopwatch()..start();
     _initTts();
   }
 
   void _initTts() async {
     await _tts.setLanguage("en-US");
-    await _tts.setSpeechRate(0.5);
+    await _tts.setSpeechRate(0.52);
     await _tts.setVolume(1.0);
     await _tts.setPitch(1.0);
+    await _tts.awaitSpeakCompletion(true); // Ensures await finishes only after speech ends
+
     _generateNextAudioQuestion();
   }
 
   @override
   void dispose() {
     _tts.stop();
-    _stopwatch.stop();
+    _activeRecallWatch.stop();
     super.dispose();
   }
 
   void _generateNextAudioQuestion() async {
+    _activeRecallWatch.reset();
+    _activeRecallWatch.stop();
+
     _num1 = _rng.nextInt(90) + 10;
     _num2 = _rng.nextInt(90) + 10;
 
@@ -1561,9 +1712,16 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
   void _playAudioSequence() async {
     setState(() => _isSpeaking = true);
     final opWord = widget.isAddition ? "plus" : "minus";
-    await _tts.speak("$_num1 ... $opWord ... $_num2");
-    await Future.delayed(const Duration(milliseconds: 1400));
-    if (mounted) setState(() => _isSpeaking = false);
+
+    // Speaks and waits until completely finished
+    await _tts.speak("$_num1 $opWord $_num2");
+
+    if (mounted) {
+      setState(() => _isSpeaking = false);
+      // Timer starts immediately when audio finishes
+      _activeRecallWatch.reset();
+      _activeRecallWatch.start();
+    }
   }
 
   void _onKeyPress(String val) {
@@ -1581,6 +1739,11 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
     }
     if (val == 'SUBMIT') {
       if (_userAnswer.isEmpty) return;
+
+      // Stop stopwatch and add pure reaction time
+      _activeRecallWatch.stop();
+      _totalActiveThinkingMillis += _activeRecallWatch.elapsedMilliseconds;
+
       final entered = int.tryParse(_userAnswer) ?? -99999;
       final isCorrect = entered == _correctAnswer;
 
@@ -1612,8 +1775,10 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
   }
 
   void _finish() {
-    _stopwatch.stop();
     _tts.stop();
+    _activeRecallWatch.stop();
+
+    final int pureRecallSeconds = max(1, (_totalActiveThinkingMillis / 1000).round());
 
     Navigator.pushReplacement(
       context,
@@ -1624,7 +1789,7 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
           totalQuota: widget.totalQuota,
           correct: _correctCount,
           wrong: _wrongCount,
-          totalSeconds: _stopwatch.elapsed.inSeconds,
+          totalSeconds: pureRecallSeconds,
         ),
       ),
     );
@@ -1725,7 +1890,7 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
 }
 
 // -------------------------------------------------------------
-// 7. BLIND 2-NUMBER FLASH SCREEN
+// 7. BLIND 2-NUMBER FLASH SCREEN (ACTIVE RECALL)
 // -------------------------------------------------------------
 enum FlashStage { showNum1, showOp, showNum2, inputReady }
 
@@ -1767,25 +1932,28 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
   final int _baseT3 = 600;
 
   Timer? _animTimer;
-  late Stopwatch _stopwatch;
+  final Stopwatch _activeRecallWatch = Stopwatch();
+  int _totalActiveThinkingMillis = 0;
   Color _edgeGlowColor = Colors.transparent;
 
   @override
   void initState() {
     super.initState();
-    _stopwatch = Stopwatch()..start();
     _generateNextFlashQuestion();
   }
 
   @override
   void dispose() {
     _animTimer?.cancel();
-    _stopwatch.stop();
+    _activeRecallWatch.stop();
     super.dispose();
   }
 
   void _generateNextFlashQuestion() {
     _animTimer?.cancel();
+    _activeRecallWatch.reset();
+    _activeRecallWatch.stop();
+
     _num1 = _rng.nextInt(90) + 10;
     _num2 = _rng.nextInt(90) + 10;
 
@@ -1818,6 +1986,7 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
         _animTimer = Timer(Duration(milliseconds: t3), () {
           if (!mounted) return;
           setState(() => _stage = FlashStage.inputReady);
+          _activeRecallWatch.start();
         });
       });
     });
@@ -1838,6 +2007,10 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
     }
     if (val == 'SUBMIT') {
       if (_userAnswer.isEmpty) return;
+
+      _activeRecallWatch.stop();
+      _totalActiveThinkingMillis += _activeRecallWatch.elapsedMilliseconds;
+
       final entered = int.tryParse(_userAnswer) ?? -99999;
       final isCorrect = entered == _correctAnswer;
 
@@ -1869,8 +2042,10 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
   }
 
   void _finish() {
-    _stopwatch.stop();
     _animTimer?.cancel();
+    _activeRecallWatch.stop();
+
+    final int pureRecallSeconds = max(1, (_totalActiveThinkingMillis / 1000).round());
 
     Navigator.pushReplacement(
       context,
@@ -1881,7 +2056,7 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
           totalQuota: widget.totalQuota,
           correct: _correctCount,
           wrong: _wrongCount,
-          totalSeconds: _stopwatch.elapsed.inSeconds,
+          totalSeconds: pureRecallSeconds,
         ),
       ),
     );
@@ -2265,7 +2440,7 @@ class _ResultSummaryScreenState extends State<ResultSummaryScreen> {
                         const SizedBox(height: 3),
                         Text('Wrong Answers: ${widget.wrong}', style: TextStyle(fontSize: 13, color: widget.wrong > 0 ? Colors.redAccent : Colors.white54, fontWeight: FontWeight.w500)),
                         const SizedBox(height: 2),
-                        Text('Total Time: ${safeSeconds ~/ 60}m ${safeSeconds % 60}s', style: const TextStyle(fontSize: 12, color: Colors.white54)),
+                        Text('Active Response Time: ${safeSeconds ~/ 60}m ${safeSeconds % 60}s', style: const TextStyle(fontSize: 12, color: Colors.white54)),
                       ],
                     ),
                   ],
@@ -2276,11 +2451,11 @@ class _ResultSummaryScreenState extends State<ResultSummaryScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: _metricCard('SPEED (QPM)', qpm.toStringAsFixed(1), 'questions / min', Icons.bolt, const Color(0xFF6366F1)),
+                    child: _metricCard('RECALL SPEED (QPM)', qpm.toStringAsFixed(1), 'questions / min', Icons.bolt, const Color(0xFF6366F1)),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: _metricCard('PACE (SPQ)', spq.toStringAsFixed(2), 'seconds / question', Icons.timelapse, const Color(0xFF06B6D4)),
+                    child: _metricCard('REACTION PACE (SPQ)', spq.toStringAsFixed(2), 'seconds / question', Icons.timelapse, const Color(0xFF06B6D4)),
                   ),
                 ],
               ),
