@@ -102,7 +102,7 @@ class StorageService {
 }
 
 // -------------------------------------------------------------
-// APP THEME & TITLE (SPA MATHS MATRIX)
+// APP THEME & TITLE
 // -------------------------------------------------------------
 class MathTrainerApp extends StatelessWidget {
   const MathTrainerApp({super.key});
@@ -556,7 +556,7 @@ enum MathMode {
 }
 
 // -------------------------------------------------------------
-// 3. QUOTA MODAL
+// 3. QUOTA MODAL (UPDATED: 10, 20, 30, 40, 50)
 // -------------------------------------------------------------
 class QuotaSelectionSheet extends StatefulWidget {
   final MathMode mode;
@@ -568,8 +568,9 @@ class QuotaSelectionSheet extends StatefulWidget {
 }
 
 class _QuotaSelectionSheetState extends State<QuotaSelectionSheet> {
-  final List<int> _quotaOptions = [20, 40, 60, 80, 100];
-  int _selectedQuota = 40;
+  // Updated Quota List
+  final List<int> _quotaOptions = [10, 20, 30, 40, 50];
+  int _selectedQuota = 20;
   int _chainLength = 4;
 
   @override
