@@ -102,6 +102,140 @@ class StorageService {
 }
 
 // -------------------------------------------------------------
+// 5-TIER RANKING SYSTEM
+// -------------------------------------------------------------
+class TierInfo {
+  final String title;
+  final String badge;
+  final Color color;
+  final String description;
+  final String milestoneText;
+  final List<LadderStep> ladder;
+  final bool isAccuracyPenalized;
+
+  TierInfo({
+    required this.title,
+    required this.badge,
+    required this.color,
+    required this.description,
+    required this.milestoneText,
+    required this.ladder,
+    required this.isAccuracyPenalized,
+  });
+}
+
+class LadderStep {
+  final String rank;
+  final String badge;
+  final String range;
+  final bool isCurrent;
+  LadderStep({required this.rank, required this.badge, required this.range, this.isCurrent = false});
+}
+
+class RankEvaluator {
+  static TierInfo evaluate(String modeKey, double spq, double accuracy) {
+    int group = 1;
+
+    final k = modeKey.toLowerCase();
+    if (k.contains('add2d2d') || k.contains('sub2d2d') || k.contains('mul2d1d')) {
+      group = 1;
+    } else if (k.contains('add3d3d') || k.contains('add4x') || k.contains('subcomplex') ||
+        k.contains('mul2d2d') || k.contains('div4d2d') || k.contains('chain') || k.contains('multiflash')) {
+      group = 3;
+    } else {
+      group = 2;
+    }
+
+    double proCut, semiCut, interCut, begCut;
+    if (group == 1) {
+      proCut = 1.6;
+      semiCut = 2.6;
+      interCut = 4.2;
+      begCut = 6.5;
+    } else if (group == 2) {
+      proCut = 2.6;
+      semiCut = 4.2;
+      interCut = 6.8;
+      begCut = 10.0;
+    } else {
+      proCut = 5.0;
+      semiCut = 7.8;
+      interCut = 11.5;
+      begCut = 16.0;
+    }
+
+    bool accurate = accuracy >= 90.0;
+    String title, badge, desc, milestone;
+    Color color;
+    int currentRankIndex = 0;
+
+    if (spq < proCut) {
+      currentRankIndex = 0;
+      title = "PRO MATRIX MASTER";
+      badge = "👑";
+      color = const Color(0xFF10B981);
+      desc = "Top 0.1% SSC CGL Ranker Reflexes";
+      milestone = "🔥 Peak Speed Reached! Maintain this consistency.";
+    } else if (spq < semiCut) {
+      currentRankIndex = 1;
+      title = "SEMI-PRO PERFORMER";
+      badge = "⚡";
+      color = const Color(0xFF6366F1);
+      desc = "Exam-Ready Speed. Highly Competitive.";
+      final gap = (spq - proCut).toStringAsFixed(1);
+      milestone = "Target: Shave off -$gap s/Q to reach PRO (👑)";
+    } else if (spq < interCut) {
+      currentRankIndex = 2;
+      title = "INTERMEDIATE ASPIRANT";
+      badge = "🎯";
+      color = const Color(0xFF06B6D4);
+      desc = "Solid Base. Carry-over speed improving.";
+      final gap = (spq - semiCut).toStringAsFixed(1);
+      milestone = "Target: Shave off -$gap s/Q to reach SEMI-PRO (⚡)";
+    } else if (spq < begCut) {
+      currentRankIndex = 3;
+      title = "BEGINNER LEVEL";
+      badge = "🌱";
+      color = const Color(0xFFF59E0B);
+      desc = "Developing mental stamina. Cut typing delay.";
+      final gap = (spq - interCut).toStringAsFixed(1);
+      milestone = "Target: Shave off -$gap s/Q to reach INTERMEDIATE (🎯)";
+    } else {
+      currentRankIndex = 4;
+      title = "NOOB (STARTING LINE)";
+      badge = "🐢";
+      color = const Color(0xFFEF4444);
+      desc = "High Pen-Paper reliance. Practice subconscious flow.";
+      final gap = (spq - begCut).toStringAsFixed(1);
+      milestone = "Target: Shave off -$gap s/Q to reach BEGINNER (🌱)";
+    }
+
+    if (!accurate) {
+      color = const Color(0xFFF97316);
+      milestone = "⚠️ Accuracy is below 90%! Negative marking penalty applied.";
+    }
+
+    final ladder = [
+      LadderStep(rank: "PRO", badge: "👑", range: "< ${proCut}s", isCurrent: currentRankIndex == 0),
+      LadderStep(rank: "SEMI-PRO", badge: "⚡", range: "${proCut}s - ${semiCut}s", isCurrent: currentRankIndex == 1),
+      LadderStep(rank: "INTERMEDIATE", badge: "🎯", range: "${semiCut}s - ${interCut}s", isCurrent: currentRankIndex == 2),
+      LadderStep(rank: "BEGINNER", badge: "🌱", range: "${interCut}s - ${begCut}s", isCurrent: currentRankIndex == 3),
+      LadderStep(rank: "NOOB", badge: "🐢", range: "> ${begCut}s", isCurrent: currentRankIndex == 4),
+    ];
+
+    return TierInfo(
+      title: title,
+      badge: badge,
+      color: color,
+      description: desc,
+      milestoneText: milestone,
+      ladder: ladder,
+      isAccuracyPenalized: !accurate,
+    );
+  }
+}
+
+// -------------------------------------------------------------
 // APP THEME & ENTRY POINT
 // -------------------------------------------------------------
 class MathTrainerApp extends StatelessWidget {
@@ -143,11 +277,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
-
+    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
     _fadeAnimation = CurvedAnimation(parent: _animController, curve: Curves.easeIn);
     _scaleAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
       CurvedAnimation(parent: _animController, curve: Curves.easeOutBack),
@@ -161,9 +291,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           context,
           PageRouteBuilder(
             pageBuilder: (_, __, ___) => const HomeScreen(),
-            transitionsBuilder: (_, animation, __, child) {
-              return FadeTransition(opacity: animation, child: child);
-            },
+            transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
             transitionDuration: const Duration(milliseconds: 400),
           ),
         );
@@ -195,11 +323,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF6366F1).withOpacity(0.35),
-                        blurRadius: 30,
-                        spreadRadius: 8,
-                      ),
+                      BoxShadow(color: const Color(0xFF6366F1).withOpacity(0.35), blurRadius: 30, spreadRadius: 8),
                     ],
                     border: Border.all(color: const Color(0xFF6366F1), width: 2.5),
                   ),
@@ -207,30 +331,20 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     child: Image.asset(
                       'icon.png',
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: const Color(0xFF161922),
-                          child: const Icon(Icons.bolt_rounded, size: 60, color: Color(0xFF6366F1)),
-                        );
-                      },
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: const Color(0xFF161922),
+                        child: const Icon(Icons.bolt_rounded, size: 60, color: Color(0xFF6366F1)),
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
                 const Text(
                   'SPA MATHS MATRIX',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.5,
-                    color: Colors.white,
-                  ),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 1.5, color: Colors.white),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  'Advanced Speed Calculation Engine',
-                  style: TextStyle(fontSize: 12, color: Colors.white54, letterSpacing: 0.5),
-                ),
+                const Text('Advanced Speed Calculation Engine', style: TextStyle(fontSize: 12, color: Colors.white54)),
                 const SizedBox(height: 60),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -244,15 +358,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     children: [
                       Icon(Icons.code_rounded, size: 16, color: Color(0xFF10B981)),
                       SizedBox(width: 8),
-                      Text(
-                        'Created & Powered by Subodh',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white70,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
+                      Text('Created & Powered by Subodh', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white70)),
                     ],
                   ),
                 ),
@@ -266,7 +372,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 }
 
 // -------------------------------------------------------------
-// 1. HOME SCREEN - CATEGORIES
+// 1. HOME SCREEN
 // -------------------------------------------------------------
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -290,17 +396,9 @@ class HomeScreen extends StatelessWidget {
                     children: [
                       Text(
                         'SPA MATHS MATRIX',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: -0.5,
-                          color: Colors.white,
-                        ),
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: -0.5, color: Colors.white),
                       ),
-                      Text(
-                        'Select an operation to begin',
-                        style: TextStyle(fontSize: 13, color: Colors.white54),
-                      ),
+                      Text('Select an operation to begin', style: TextStyle(fontSize: 13, color: Colors.white54)),
                     ],
                   ),
                   Container(
@@ -314,14 +412,7 @@ class HomeScreen extends StatelessWidget {
                       children: [
                         const Icon(Icons.local_fire_department_rounded, color: Colors.orangeAccent, size: 20),
                         const SizedBox(width: 4),
-                        Text(
-                          '$streak Days',
-                          style: const TextStyle(
-                            color: Colors.orangeAccent,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                          ),
-                        ),
+                        Text('$streak Days', style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold, fontSize: 13)),
                       ],
                     ),
                   ),
@@ -338,10 +429,7 @@ class HomeScreen extends StatelessWidget {
                       subtitle: '2D+2D, 3D+2D, 3D+3D, 4x Chain',
                       icon: Icons.add_rounded,
                       color: const Color(0xFF6366F1),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const SubCategoryScreen(category: OperationCategory.addition)),
-                      ),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubCategoryScreen(category: OperationCategory.addition))),
                     ),
                     _buildCategoryCard(
                       context,
@@ -349,10 +437,7 @@ class HomeScreen extends StatelessWidget {
                       subtitle: '2D-2D, 3D-2D, 3D-3D, Complex',
                       icon: Icons.remove_rounded,
                       color: const Color(0xFFEC4899),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const SubCategoryScreen(category: OperationCategory.subtraction)),
-                      ),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubCategoryScreen(category: OperationCategory.subtraction))),
                     ),
                     _buildCategoryCard(
                       context,
@@ -360,10 +445,7 @@ class HomeScreen extends StatelessWidget {
                       subtitle: '2D × 1D, 2D × 2D (RTL Typing)',
                       icon: Icons.close_rounded,
                       color: const Color(0xFF10B981),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const SubCategoryScreen(category: OperationCategory.multiplication)),
-                      ),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubCategoryScreen(category: OperationCategory.multiplication))),
                     ),
                     _buildCategoryCard(
                       context,
@@ -371,10 +453,7 @@ class HomeScreen extends StatelessWidget {
                       subtitle: '3D ÷ 1D, 3D ÷ 2D, 4D ÷ 2D (Exact Integer)',
                       icon: Icons.safety_divider_rounded,
                       color: const Color(0xFF06B6D4),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const SubCategoryScreen(category: OperationCategory.division)),
-                      ),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubCategoryScreen(category: OperationCategory.division))),
                     ),
                     _buildCategoryCard(
                       context,
@@ -382,10 +461,7 @@ class HomeScreen extends StatelessWidget {
                       subtitle: 'Visual Memory Flash & Multi-Step Anzan',
                       icon: Icons.flash_on_rounded,
                       color: const Color(0xFFF43F5E),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const SubCategoryScreen(category: OperationCategory.flashMath)),
-                      ),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubCategoryScreen(category: OperationCategory.flashMath))),
                     ),
                     _buildCategoryCard(
                       context,
@@ -393,10 +469,7 @@ class HomeScreen extends StatelessWidget {
                       subtitle: 'Listening Calculation (TTS Engine)',
                       icon: Icons.headphones_rounded,
                       color: const Color(0xFF8B5CF6),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const SubCategoryScreen(category: OperationCategory.audioMath)),
-                      ),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubCategoryScreen(category: OperationCategory.audioMath))),
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -435,10 +508,7 @@ class HomeScreen extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+                  decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(16)),
                   child: Icon(icon, color: color, size: 28),
                 ),
                 const SizedBox(width: 16),
@@ -446,15 +516,9 @@ class HomeScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        title,
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
+                      Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white)),
                       const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(fontSize: 12, color: Colors.white54),
-                      ),
+                      Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.white54)),
                     ],
                   ),
                 ),
@@ -468,14 +532,7 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-enum OperationCategory {
-  addition,
-  subtraction,
-  multiplication,
-  division,
-  flashMath,
-  audioMath,
-}
+enum OperationCategory { addition, subtraction, multiplication, division, flashMath, audioMath }
 
 // -------------------------------------------------------------
 // 2. SUB-CATEGORY SCREEN
@@ -497,15 +554,9 @@ class SubCategoryScreen extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                    onPressed: () => Navigator.pop(context),
-                  ),
+                  IconButton(icon: const Icon(Icons.arrow_back_ios_new, size: 20), onPressed: () => Navigator.pop(context)),
                   const SizedBox(width: 6),
-                  Text(
-                    data.title,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
+                  Text(data.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 ],
               ),
               const SizedBox(height: 6),
@@ -518,10 +569,7 @@ class SubCategoryScreen extends StatelessWidget {
                 child: ListView.builder(
                   physics: const BouncingScrollPhysics(),
                   itemCount: data.modes.length,
-                  itemBuilder: (context, idx) {
-                    final item = data.modes[idx];
-                    return _buildModeTile(context, item);
-                  },
+                  itemBuilder: (context, idx) => _buildModeTile(context, data.modes[idx]),
                 ),
               ),
             ],
@@ -560,10 +608,7 @@ class SubCategoryScreen extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: item.color.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  decoration: BoxDecoration(color: item.color.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
                   child: Icon(item.icon, color: item.color, size: 22),
                 ),
                 const SizedBox(width: 14),
@@ -599,7 +644,6 @@ class SubCategoryScreen extends StatelessWidget {
             ModeItem(mode: MathMode.add4x2D, title: '4x 2-Digit Addition', subtitle: 'DD + DD + DD + DD', icon: Icons.playlist_add, color: const Color(0xFFC084FC)),
           ],
         );
-
       case OperationCategory.subtraction:
         return CategoryConfig(
           title: 'Subtraction Training',
@@ -611,7 +655,6 @@ class SubCategoryScreen extends StatelessWidget {
             ModeItem(mode: MathMode.subComplex, title: 'Complex Subtraction', subtitle: 'DDD - DD - D - D', icon: Icons.linear_scale, color: const Color(0xFFF59E0B)),
           ],
         );
-
       case OperationCategory.multiplication:
         return CategoryConfig(
           title: 'Multiplication Training',
@@ -621,7 +664,6 @@ class SubCategoryScreen extends StatelessWidget {
             ModeItem(mode: MathMode.mul2D2D, title: '2-Digit × 2-Digit (RTL)', subtitle: 'DD × DD (Unit ➔ Tens)', icon: Icons.apps, color: const Color(0xFF10B981), isSpecial: true),
           ],
         );
-
       case OperationCategory.division:
         return CategoryConfig(
           title: 'Division Training',
@@ -632,7 +674,6 @@ class SubCategoryScreen extends StatelessWidget {
             ModeItem(mode: MathMode.div4D2D, title: '4-Digit ÷ 2-Digit', subtitle: 'DDDD ÷ DD (2-Digit Quotient)', icon: Icons.safety_divider, color: const Color(0xFF38BDF8), isSpecial: true),
           ],
         );
-
       case OperationCategory.flashMath:
         return CategoryConfig(
           title: 'Blind Flash Memory',
@@ -643,7 +684,6 @@ class SubCategoryScreen extends StatelessWidget {
             ModeItem(mode: MathMode.multiFlash, title: 'Multi-Step Chain Flash', subtitle: 'Continuous chain of 3 to 10 numbers', icon: Icons.all_inclusive, color: const Color(0xFFE11D48), isSpecial: true),
           ],
         );
-
       case OperationCategory.audioMath:
         return CategoryConfig(
           title: 'Auditory Math Training',
@@ -675,24 +715,12 @@ class ModeItem {
 }
 
 enum MathMode {
-  add2D2D,
-  add3D2D,
-  add3D3D,
-  add4x2D,
-  sub2D2D,
-  sub3D2D,
-  sub3D3D,
-  subComplex,
-  mul2D1D,
-  mul2D2D,
-  div3D1D,
-  div3D2D,
-  div4D2D,
-  flashAdd,
-  flashSub,
-  multiFlash,
-  audioAdd,
-  audioSub,
+  add2D2D, add3D2D, add3D3D, add4x2D,
+  sub2D2D, sub3D2D, sub3D3D, subComplex,
+  mul2D1D, mul2D2D,
+  div3D1D, div3D2D, div4D2D,
+  flashAdd, flashSub, multiFlash,
+  audioAdd, audioSub,
 }
 
 // -------------------------------------------------------------
@@ -725,11 +753,7 @@ class _QuotaSelectionSheetState extends State<QuotaSelectionSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10)),
-              ),
+              child: Container(width: 36, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10))),
             ),
             const SizedBox(height: 16),
             Text(widget.modeName, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
@@ -750,19 +774,12 @@ class _QuotaSelectionSheetState extends State<QuotaSelectionSheet> {
                         decoration: BoxDecoration(
                           color: isSelected ? const Color(0xFF6366F1) : const Color(0xFF222634),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isSelected ? const Color(0xFF818CF8) : Colors.transparent,
-                            width: 1.5,
-                          ),
+                          border: Border.all(color: isSelected ? const Color(0xFF818CF8) : Colors.transparent, width: 1.5),
                         ),
                         alignment: Alignment.center,
                         child: Text(
                           '$q',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: isSelected ? Colors.white : Colors.white70,
-                          ),
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : Colors.white70),
                         ),
                       ),
                     ),
@@ -809,14 +826,9 @@ class _QuotaSelectionSheetState extends State<QuotaSelectionSheet> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Text('Stored Personal Best ($_selectedQuota Questions)', style: const TextStyle(fontSize: 11, color: Colors.white54, fontWeight: FontWeight.w600)),
                       Text(
-                        'Stored Personal Best ($_selectedQuota Questions)',
-                        style: const TextStyle(fontSize: 11, color: Colors.white54, fontWeight: FontWeight.w600),
-                      ),
-                      Text(
-                        best != null
-                            ? '${best.accuracy.toStringAsFixed(1)}% Acc  •  ${best.qpm.toStringAsFixed(1)} QPM'
-                            : 'No records yet',
+                        best != null ? '${best.accuracy.toStringAsFixed(1)}% Acc  •  ${best.qpm.toStringAsFixed(1)} QPM' : 'No records yet',
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                     ],
@@ -844,10 +856,7 @@ class _QuotaSelectionSheetState extends State<QuotaSelectionSheet> {
                   children: [
                     Icon(Icons.play_arrow_rounded, size: 24, color: Colors.white),
                     SizedBox(width: 6),
-                    Text(
-                      'START PRACTICE',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: Colors.white),
-                    ),
+                    Text('START PRACTICE', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: Colors.white)),
                   ],
                 ),
               ),
@@ -911,19 +920,14 @@ class _QuotaSelectionSheetState extends State<QuotaSelectionSheet> {
 }
 
 // -------------------------------------------------------------
-// 4. STANDARD PRACTICE SCREEN
+// 4. STANDARD PRACTICE SCREEN (OPTIMIZED GHOST PACER & NUMPAD)
 // -------------------------------------------------------------
 class StandardPracticeScreen extends StatefulWidget {
   final MathMode mode;
   final int totalQuota;
   final String modeName;
 
-  const StandardPracticeScreen({
-    super.key,
-    required this.mode,
-    required this.totalQuota,
-    required this.modeName,
-  });
+  const StandardPracticeScreen({super.key, required this.mode, required this.totalQuota, required this.modeName});
 
   @override
   State<StandardPracticeScreen> createState() => _StandardPracticeScreenState();
@@ -992,21 +996,18 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
         _correctAnswer = a + b;
         _questionText = '$a + $b';
         break;
-
       case MathMode.add3D2D:
         int a = _rng.nextInt(900) + 100;
         int b = _rng.nextInt(90) + 10;
         _correctAnswer = a + b;
         _questionText = '$a + $b';
         break;
-
       case MathMode.add3D3D:
         int a = _rng.nextInt(900) + 100;
         int b = _rng.nextInt(900) + 100;
         _correctAnswer = a + b;
         _questionText = '$a + $b';
         break;
-
       case MathMode.add4x2D:
         int a = _rng.nextInt(90) + 10;
         int b = _rng.nextInt(90) + 10;
@@ -1015,38 +1016,26 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
         _correctAnswer = a + b + c + d;
         _questionText = '$a + $b + $c + $d';
         break;
-
       case MathMode.sub2D2D:
         int a = _rng.nextInt(90) + 10;
         int b = _rng.nextInt(90) + 10;
-        if (a < b) {
-          int t = a;
-          a = b;
-          b = t;
-        }
+        if (a < b) { int t = a; a = b; b = t; }
         _correctAnswer = a - b;
         _questionText = '$a - $b';
         break;
-
       case MathMode.sub3D2D:
         int a = _rng.nextInt(900) + 100;
         int b = _rng.nextInt(90) + 10;
         _correctAnswer = a - b;
         _questionText = '$a - $b';
         break;
-
       case MathMode.sub3D3D:
         int a = _rng.nextInt(900) + 100;
         int b = _rng.nextInt(900) + 100;
-        if (a < b) {
-          int t = a;
-          a = b;
-          b = t;
-        }
+        if (a < b) { int t = a; a = b; b = t; }
         _correctAnswer = a - b;
         _questionText = '$a - $b';
         break;
-
       case MathMode.subComplex:
         int a = _rng.nextInt(900) + 100;
         int b = _rng.nextInt(90) + 10;
@@ -1055,21 +1044,18 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
         _correctAnswer = a - b - c - d;
         _questionText = '$a - $b - $c - $d';
         break;
-
       case MathMode.mul2D1D:
         int a = _rng.nextInt(90) + 10;
         int b = _rng.nextInt(8) + 2;
         _correctAnswer = a * b;
         _questionText = '$a × $b';
         break;
-
       case MathMode.mul2D2D:
         int a = _rng.nextInt(90) + 10;
         int b = _rng.nextInt(90) + 10;
         _correctAnswer = a * b;
         _questionText = '$a × $b';
         break;
-
       case MathMode.div3D1D:
         int divisor = _rng.nextInt(8) + 2;
         int quotient = _rng.nextInt(89) + 11;
@@ -1077,7 +1063,6 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
         _correctAnswer = quotient;
         _questionText = '$dividend ÷ $divisor';
         break;
-
       case MathMode.div3D2D:
         int divisor2 = _rng.nextInt(80) + 12;
         int quotient2 = _rng.nextInt(8) + 2;
@@ -1085,7 +1070,6 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
         _correctAnswer = quotient2;
         _questionText = '$dividend2 ÷ $divisor2';
         break;
-
       case MathMode.div4D2D:
         int divisor3 = _rng.nextInt(80) + 15;
         int quotient3 = _rng.nextInt(80) + 12;
@@ -1093,7 +1077,6 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
         _correctAnswer = quotient3;
         _questionText = '$dividend3 ÷ $divisor3';
         break;
-
       default:
         break;
     }
@@ -1106,7 +1089,6 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
       setState(() => _userAnswer = '');
       return;
     }
-
     if (val == 'BACK') {
       if (_userAnswer.isNotEmpty) {
         setState(() {
@@ -1115,14 +1097,12 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
       }
       return;
     }
-
     if (val == 'SUBMIT') {
       _submitCurrentAnswer();
       return;
     }
 
     if (_userAnswer.length >= 7) return;
-
     setState(() {
       _userAnswer = isRtl ? (val + _userAnswer) : (_userAnswer + val);
     });
@@ -1149,7 +1129,6 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
     });
 
     _currentIndex++;
-
     if (_currentIndex >= widget.totalQuota) {
       _finishTest();
     } else {
@@ -1185,48 +1164,31 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
       body: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         decoration: BoxDecoration(
-          border: Border.all(
-            color: _edgeGlowColor,
-            width: _edgeGlowColor == Colors.transparent ? 0 : 5.0,
-          ),
+          border: Border.all(color: _edgeGlowColor, width: _edgeGlowColor == Colors.transparent ? 0 : 5.0),
         ),
         child: SafeArea(
           child: Column(
             children: [
+              // TOP STATUS BAR
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, size: 22),
-                      onPressed: () => Navigator.pop(context),
+                    IconButton(icon: const Icon(Icons.close_rounded, size: 22), onPressed: () => Navigator.pop(context)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                      decoration: BoxDecoration(color: const Color(0xFF1E2230), borderRadius: BorderRadius.circular(20)),
+                      child: Text('${_currentIndex + 1} / ${widget.totalQuota}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E2230),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '${_currentIndex + 1} / ${widget.totalQuota}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF1E2230),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(color: const Color(0xFF1E2230), borderRadius: BorderRadius.circular(20)),
                       child: Row(
                         children: [
                           const Icon(Icons.timer_outlined, size: 15, color: Colors.cyanAccent),
                           const SizedBox(width: 5),
-                          Text(
-                            _timeString,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.cyanAccent),
-                          ),
+                          Text(_timeString, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.cyanAccent)),
                         ],
                       ),
                     ),
@@ -1234,13 +1196,14 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
                 ),
               ),
 
+              // ENHANCED GHOST PACER STRIP (THICKER BAR + MICRO TEXT)
               if (_personalBest != null)
                 Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: const Color(0xFF161922),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: Colors.white.withOpacity(0.05)),
                   ),
                   child: Column(
@@ -1250,29 +1213,53 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.person, size: 14, color: Color(0xFF10B981)),
-                              const SizedBox(width: 4),
-                              Text('You (${(_currentIndex)})', style: const TextStyle(fontSize: 11, color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                              const Icon(Icons.person, size: 11, color: Color(0xFF10B981)),
+                              const SizedBox(width: 3),
+                              Text(
+                                'YOU (${_currentIndex})',
+                                style: const TextStyle(fontSize: 9.5, color: Color(0xFF10B981), fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                              ),
                             ],
                           ),
-                          const Row(
-                            children: [
-                              Text('👻 Best Record', style: TextStyle(fontSize: 11, color: Colors.amberAccent, fontWeight: FontWeight.bold)),
-                            ],
+                          const Text(
+                            '👻 BEST PACER',
+                            style: TextStyle(fontSize: 9.5, color: Colors.amberAccent, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
+                      // Taller 13dp progress track with clear visual depth
                       Stack(
                         children: [
-                          Container(height: 8, decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(4))),
+                          Container(
+                            height: 13,
+                            decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(7)),
+                          ),
+                          // Ghost racer track (Gold glow)
                           FractionallySizedBox(
                             widthFactor: _ghostProgress,
-                            child: Container(height: 8, decoration: BoxDecoration(color: Colors.amberAccent.withOpacity(0.4), borderRadius: BorderRadius.circular(4))),
+                            child: Container(
+                              height: 13,
+                              decoration: BoxDecoration(
+                                color: Colors.amberAccent.withOpacity(0.45),
+                                borderRadius: BorderRadius.circular(7),
+                                border: Border.all(color: Colors.amberAccent.withOpacity(0.6), width: 0.8),
+                              ),
+                            ),
                           ),
+                          // User progress track (Solid Emerald)
                           FractionallySizedBox(
                             widthFactor: userProgress,
-                            child: Container(height: 8, decoration: BoxDecoration(color: const Color(0xFF10B981), borderRadius: BorderRadius.circular(4))),
+                            child: Container(
+                              height: 13,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981),
+                                borderRadius: BorderRadius.circular(7),
+                                boxShadow: [
+                                  BoxShadow(color: const Color(0xFF10B981).withOpacity(0.4), blurRadius: 4, spreadRadius: 0.5),
+                                ],
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -1283,20 +1270,15 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
               if (isRtl)
                 Container(
                   margin: const EdgeInsets.only(top: 2),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF10B981).withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Text(
-                    '⇄ RTL Active (Unit ➔ Tens)',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                  decoration: BoxDecoration(color: const Color(0xFF10B981).withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+                  child: const Text('⇄ RTL Active (Unit ➔ Tens)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
                 ),
 
+              // CENTER QUESTION & ANSWER CONTAINER (MAXIMUM SPACE PRESERVED)
               Expanded(
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFF161922),
                     borderRadius: BorderRadius.circular(22),
@@ -1312,17 +1294,12 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
                             child: Text(
                               _questionText,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 34,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2,
-                                color: Colors.white,
-                              ),
+                              style: const TextStyle(fontSize: 34, fontWeight: FontWeight.bold, letterSpacing: 1.2, color: Colors.white),
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 14),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 8),
                             decoration: BoxDecoration(
                               color: const Color(0xFF0C0E14),
                               borderRadius: BorderRadius.circular(16),
@@ -1344,8 +1321,9 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
                 ),
               ),
 
+              // ERGONOMIC HALF-SCREEN NUMPAD
               NumpadWithSubmit(onKeyPress: _onKeyPress),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
             ],
           ),
         ),
@@ -1355,7 +1333,7 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
 }
 
 // -------------------------------------------------------------
-// 5. MULTI-STEP CHAIN FLASH SCREEN (ACTIVE RECALL)
+// 5. MULTI-STEP CHAIN FLASH SCREEN
 // -------------------------------------------------------------
 class MultiStepFlashScreen extends StatefulWidget {
   final int chainLength;
@@ -1363,13 +1341,7 @@ class MultiStepFlashScreen extends StatefulWidget {
   final String modeName;
   final String modeKey;
 
-  const MultiStepFlashScreen({
-    super.key,
-    required this.chainLength,
-    required this.totalQuota,
-    required this.modeName,
-    required this.modeKey,
-  });
+  const MultiStepFlashScreen({super.key, required this.chainLength, required this.totalQuota, required this.modeName, required this.modeKey});
 
   @override
   State<MultiStepFlashScreen> createState() => _MultiStepFlashScreenState();
@@ -1533,10 +1505,7 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
       body: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         decoration: BoxDecoration(
-          border: Border.all(
-            color: _edgeGlowColor,
-            width: _edgeGlowColor == Colors.transparent ? 0 : 5.0,
-          ),
+          border: Border.all(color: _edgeGlowColor, width: _edgeGlowColor == Colors.transparent ? 0 : 5.0),
         ),
         child: SafeArea(
           child: Column(
@@ -1546,14 +1515,8 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, size: 22),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    Text(
-                      '${_currentIndex + 1} / ${widget.totalQuota}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
+                    IconButton(icon: const Icon(Icons.close_rounded, size: 22), onPressed: () => Navigator.pop(context)),
+                    Text('${_currentIndex + 1} / ${widget.totalQuota}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     IconButton(
                       icon: const Icon(Icons.replay_rounded, color: Colors.cyanAccent),
                       onPressed: () {
@@ -1620,7 +1583,7 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
               ),
 
               NumpadWithSubmit(onKeyPress: _onKeyPress, enabled: !_isFlashing),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
             ],
           ),
         ),
@@ -1630,7 +1593,7 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
 }
 
 // -------------------------------------------------------------
-// 6. AUDIO MATH (TTS) SCREEN (EXACT END-OF-SPEECH TIMING)
+// 6. AUDIO MATH (TTS) SCREEN
 // -------------------------------------------------------------
 class AudioMathScreen extends StatefulWidget {
   final bool isAddition;
@@ -1638,13 +1601,7 @@ class AudioMathScreen extends StatefulWidget {
   final String modeName;
   final String modeKey;
 
-  const AudioMathScreen({
-    super.key,
-    required this.isAddition,
-    required this.totalQuota,
-    required this.modeName,
-    required this.modeKey,
-  });
+  const AudioMathScreen({super.key, required this.isAddition, required this.totalQuota, required this.modeName, required this.modeKey});
 
   @override
   State<AudioMathScreen> createState() => _AudioMathScreenState();
@@ -1679,7 +1636,7 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
     await _tts.setSpeechRate(0.52);
     await _tts.setVolume(1.0);
     await _tts.setPitch(1.0);
-    await _tts.awaitSpeakCompletion(true); // Ensures await finishes only after speech ends
+    await _tts.awaitSpeakCompletion(true);
 
     _generateNextAudioQuestion();
   }
@@ -1712,13 +1669,10 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
   void _playAudioSequence() async {
     setState(() => _isSpeaking = true);
     final opWord = widget.isAddition ? "plus" : "minus";
-
-    // Speaks and waits until completely finished
     await _tts.speak("$_num1 $opWord $_num2");
 
     if (mounted) {
       setState(() => _isSpeaking = false);
-      // Timer starts immediately when audio finishes
       _activeRecallWatch.reset();
       _activeRecallWatch.start();
     }
@@ -1740,7 +1694,6 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
     if (val == 'SUBMIT') {
       if (_userAnswer.isEmpty) return;
 
-      // Stop stopwatch and add pure reaction time
       _activeRecallWatch.stop();
       _totalActiveThinkingMillis += _activeRecallWatch.elapsedMilliseconds;
 
@@ -1801,10 +1754,7 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
       body: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         decoration: BoxDecoration(
-          border: Border.all(
-            color: _edgeGlowColor,
-            width: _edgeGlowColor == Colors.transparent ? 0 : 5.0,
-          ),
+          border: Border.all(color: _edgeGlowColor, width: _edgeGlowColor == Colors.transparent ? 0 : 5.0),
         ),
         child: SafeArea(
           child: Column(
@@ -1814,18 +1764,9 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, size: 22),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    Text(
-                      '${_currentIndex + 1} / ${widget.totalQuota}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.volume_up_rounded, color: Colors.cyanAccent),
-                      onPressed: _playAudioSequence,
-                    ),
+                    IconButton(icon: const Icon(Icons.close_rounded, size: 22), onPressed: () => Navigator.pop(context)),
+                    Text('${_currentIndex + 1} / ${widget.totalQuota}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    IconButton(icon: const Icon(Icons.volume_up_rounded, color: Colors.cyanAccent), onPressed: _playAudioSequence),
                   ],
                 ),
               ),
@@ -1842,20 +1783,9 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          _isSpeaking ? Icons.graphic_eq_rounded : Icons.headphones_rounded,
-                          size: 70,
-                          color: _isSpeaking ? Colors.cyanAccent : Colors.white30,
-                        ),
+                        Icon(_isSpeaking ? Icons.graphic_eq_rounded : Icons.headphones_rounded, size: 70, color: _isSpeaking ? Colors.cyanAccent : Colors.white30),
                         const SizedBox(height: 16),
-                        Text(
-                          _isSpeaking ? 'Listening...' : 'Type your answer',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: _isSpeaking ? Colors.cyanAccent : Colors.white54,
-                          ),
-                        ),
+                        Text(_isSpeaking ? 'Listening...' : 'Type your answer', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: _isSpeaking ? Colors.cyanAccent : Colors.white54)),
                         const SizedBox(height: 24),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
@@ -1864,14 +1794,7 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.5), width: 1.5),
                           ),
-                          child: Text(
-                            _userAnswer.isEmpty ? '?' : _userAnswer,
-                            style: TextStyle(
-                              fontSize: 36,
-                              fontWeight: FontWeight.bold,
-                              color: _userAnswer.isEmpty ? Colors.white24 : const Color(0xFF818CF8),
-                            ),
-                          ),
+                          child: Text(_userAnswer.isEmpty ? '?' : _userAnswer, style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: _userAnswer.isEmpty ? Colors.white24 : const Color(0xFF818CF8))),
                         ),
                       ],
                     ),
@@ -1880,7 +1803,7 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
               ),
 
               NumpadWithSubmit(onKeyPress: _onKeyPress, enabled: !_isSpeaking),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
             ],
           ),
         ),
@@ -1890,7 +1813,7 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
 }
 
 // -------------------------------------------------------------
-// 7. BLIND 2-NUMBER FLASH SCREEN (ACTIVE RECALL)
+// 7. BLIND 2-NUMBER FLASH SCREEN
 // -------------------------------------------------------------
 enum FlashStage { showNum1, showOp, showNum2, inputReady }
 
@@ -1900,13 +1823,7 @@ class FlashMathScreen extends StatefulWidget {
   final String modeName;
   final String modeKey;
 
-  const FlashMathScreen({
-    super.key,
-    required this.isAddition,
-    required this.totalQuota,
-    required this.modeName,
-    required this.modeKey,
-  });
+  const FlashMathScreen({super.key, required this.isAddition, required this.totalQuota, required this.modeName, required this.modeKey});
 
   @override
   State<FlashMathScreen> createState() => _FlashMathScreenState();
@@ -2090,10 +2007,7 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
       body: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         decoration: BoxDecoration(
-          border: Border.all(
-            color: _edgeGlowColor,
-            width: _edgeGlowColor == Colors.transparent ? 0 : 5.0,
-          ),
+          border: Border.all(color: _edgeGlowColor, width: _edgeGlowColor == Colors.transparent ? 0 : 5.0),
         ),
         child: SafeArea(
           child: Column(
@@ -2103,14 +2017,8 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, size: 22),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    Text(
-                      '${_currentIndex + 1} / ${widget.totalQuota}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
+                    IconButton(icon: const Icon(Icons.close_rounded, size: 22), onPressed: () => Navigator.pop(context)),
+                    Text('${_currentIndex + 1} / ${widget.totalQuota}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     IconButton(
                       icon: const Icon(Icons.replay_rounded, color: Colors.cyanAccent),
                       onPressed: () {
@@ -2164,12 +2072,7 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
                       child: Text(
                         centerDisplay,
                         key: ValueKey<String>('$_stage$centerDisplay'),
-                        style: TextStyle(
-                          fontSize: 68,
-                          fontWeight: FontWeight.w900,
-                          color: displayColor,
-                          letterSpacing: 2,
-                        ),
+                        style: TextStyle(fontSize: 68, fontWeight: FontWeight.w900, color: displayColor, letterSpacing: 2),
                       ),
                     ),
                   ),
@@ -2177,7 +2080,7 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
               ),
 
               NumpadWithSubmit(onKeyPress: _onKeyPress, enabled: _stage == FlashStage.inputReady),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
             ],
           ),
         ),
@@ -2187,22 +2090,20 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
 }
 
 // -------------------------------------------------------------
-// 8. ERGONOMIC NUMPAD WITH SUBMIT KEY
+// 8. ERGONOMIC HALF-SCREEN NUMPAD
 // -------------------------------------------------------------
 class NumpadWithSubmit extends StatelessWidget {
   final Function(String) onKeyPress;
   final bool enabled;
 
-  const NumpadWithSubmit({
-    super.key,
-    required this.onKeyPress,
-    this.enabled = true,
-  });
+  const NumpadWithSubmit({super.key, required this.onKeyPress, this.enabled = true});
 
   @override
   Widget build(BuildContext context) {
+    const double keyHeight = 66.0;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -2210,14 +2111,14 @@ class NumpadWithSubmit extends StatelessWidget {
             flex: 3,
             child: Column(
               children: [
-                Row(children: [_key('1'), _key('2'), _key('3')]),
-                Row(children: [_key('4'), _key('5'), _key('6')]),
-                Row(children: [_key('7'), _key('8'), _key('9')]),
+                Row(children: [_key('1', keyHeight), _key('2', keyHeight), _key('3', keyHeight)]),
+                Row(children: [_key('4', keyHeight), _key('5', keyHeight), _key('6', keyHeight)]),
+                Row(children: [_key('7', keyHeight), _key('8', keyHeight), _key('9', keyHeight)]),
                 Row(
                   children: [
-                    _actionKey('C', 'CLEAR', color: Colors.redAccent.withOpacity(0.15), textColor: Colors.redAccent),
-                    _key('0'),
-                    _actionKey('⌫', 'BACK', color: Colors.white.withOpacity(0.08), textColor: Colors.white70),
+                    _actionKey('C', 'CLEAR', keyHeight, color: Colors.redAccent.withOpacity(0.18), textColor: Colors.redAccent),
+                    _key('0', keyHeight),
+                    _actionKey('⌫', 'BACK', keyHeight, color: Colors.white.withOpacity(0.1), textColor: Colors.white70),
                   ],
                 ),
               ],
@@ -2230,26 +2131,21 @@ class NumpadWithSubmit extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 3.0),
               child: Material(
                 color: enabled ? const Color(0xFF10B981) : const Color(0xFF151821),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   onTap: enabled ? () => onKeyPress('SUBMIT') : null,
                   child: Container(
-                    height: (54 * 4) + 12,
+                    height: (keyHeight * 4) + 18,
                     alignment: Alignment.center,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.arrow_forward_rounded, size: 28, color: enabled ? Colors.white : Colors.white24),
-                        const SizedBox(height: 4),
+                        Icon(Icons.arrow_forward_rounded, size: 32, color: enabled ? Colors.white : Colors.white24),
+                        const SizedBox(height: 6),
                         Text(
                           'ENTER',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
-                            color: enabled ? Colors.white : Colors.white24,
-                          ),
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, letterSpacing: 1.2, color: enabled ? Colors.white : Colors.white24),
                         ),
                       ],
                     ),
@@ -2263,23 +2159,20 @@ class NumpadWithSubmit extends StatelessWidget {
     );
   }
 
-  Widget _key(String val) {
+  Widget _key(String val, double h) {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.all(3.0),
         child: Material(
           color: enabled ? const Color(0xFF1E2230) : const Color(0xFF151821),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           child: InkWell(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             onTap: enabled ? () => onKeyPress(val) : null,
             child: Container(
-              height: 54,
+              height: h,
               alignment: Alignment.center,
-              child: Text(
-                val,
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: enabled ? Colors.white : Colors.white24),
-              ),
+              child: Text(val, style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: enabled ? Colors.white : Colors.white24)),
             ),
           ),
         ),
@@ -2287,20 +2180,20 @@ class NumpadWithSubmit extends StatelessWidget {
     );
   }
 
-  Widget _actionKey(String label, String actionVal, {required Color color, required Color textColor}) {
+  Widget _actionKey(String label, String actionVal, double h, {required Color color, required Color textColor}) {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.all(3.0),
         child: Material(
           color: enabled ? color : const Color(0xFF151821),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           child: InkWell(
             borderRadius: BorderRadius.circular(12),
             onTap: enabled ? () => onKeyPress(actionVal) : null,
             child: Container(
-              height: 54,
+              height: h,
               alignment: Alignment.center,
-              child: Text(label, style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: enabled ? textColor : Colors.white24)),
+              child: Text(label, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: enabled ? textColor : Colors.white24)),
             ),
           ),
         ),
@@ -2372,159 +2265,273 @@ class _ResultSummaryScreenState extends State<ResultSummaryScreen> {
     final sessionKey = '${widget.modeKey}_${widget.totalQuota}';
     final best = StorageService.getRecord(sessionKey);
 
+    final tier = RankEvaluator.evaluate(widget.modeKey, spq, accuracy);
+
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 22.0, vertical: 18.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: ListView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Performance Report', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                if (_isNewBest)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.amberAccent.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.amberAccent),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.star, color: Colors.amberAccent, size: 14),
+                        SizedBox(width: 4),
+                        Text('NEW BEST', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amberAccent)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+            Text('${widget.modeName} (${widget.totalQuota} Questions)', style: const TextStyle(fontSize: 13, color: Colors.white54)),
+            const SizedBox(height: 14),
+
+            // 1. HERO RANK BADGE CARD
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: tier.color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: tier.color.withOpacity(0.5), width: 1.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Performance Report', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                  if (_isNewBest)
+                  Row(
+                    children: [
+                      Text(tier.badge, style: const TextStyle(fontSize: 30)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              tier.title,
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: tier.color, letterSpacing: 0.5),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(tier.description, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (tier.isAccuracyPenalized) ...[
+                    const SizedBox(height: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.amberAccent.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.amberAccent),
+                        color: Colors.redAccent.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
                       ),
                       child: const Row(
                         children: [
-                          Icon(Icons.star, color: Colors.amberAccent, size: 14),
-                          SizedBox(width: 4),
-                          Text('NEW BEST', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amberAccent)),
+                          Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 16),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'ACCURACY PENALTY (<90%): Speed without accuracy is penalized.',
+                              style: TextStyle(fontSize: 11, color: Colors.redAccent, fontWeight: FontWeight.w600),
+                            ),
+                          ),
                         ],
                       ),
                     ),
+                  ],
                 ],
               ),
-              Text('${widget.modeName} (${widget.totalQuota} Questions)', style: const TextStyle(fontSize: 13, color: Colors.white54)),
-              const SizedBox(height: 18),
+            ),
+            const SizedBox(height: 10),
 
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF161922),
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: Colors.white.withOpacity(0.06)),
-                ),
-                child: Row(
-                  children: [
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox(
-                          width: 76,
-                          height: 76,
-                          child: CircularProgressIndicator(
-                            value: accuracy / 100,
-                            strokeWidth: 7,
-                            backgroundColor: Colors.white12,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              accuracy >= 80 ? const Color(0xFF10B981) : Colors.orangeAccent,
-                            ),
-                          ),
-                        ),
-                        Text('${accuracy.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    const SizedBox(width: 20),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('${widget.correct} / ${widget.totalQuota} Correct', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 3),
-                        Text('Wrong Answers: ${widget.wrong}', style: TextStyle(fontSize: 13, color: widget.wrong > 0 ? Colors.redAccent : Colors.white54, fontWeight: FontWeight.w500)),
-                        const SizedBox(height: 2),
-                        Text('Active Response Time: ${safeSeconds ~/ 60}m ${safeSeconds % 60}s', style: const TextStyle(fontSize: 12, color: Colors.white54)),
-                      ],
-                    ),
-                  ],
-                ),
+            // 2. NEXT MILESTONE TARGET BAR
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF161922),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
               ),
-              const SizedBox(height: 14),
-
-              Row(
+              child: Row(
                 children: [
-                  Expanded(
-                    child: _metricCard('RECALL SPEED (QPM)', qpm.toStringAsFixed(1), 'questions / min', Icons.bolt, const Color(0xFF6366F1)),
-                  ),
+                  const Icon(Icons.flag_rounded, color: Colors.cyanAccent, size: 18),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: _metricCard('REACTION PACE (SPQ)', spq.toStringAsFixed(2), 'seconds / question', Icons.timelapse, const Color(0xFF06B6D4)),
+                    child: Text(tier.milestoneText, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+            ),
+            const SizedBox(height: 12),
 
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF161922),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.06)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.emoji_events, color: Colors.amberAccent, size: 26),
-                    const SizedBox(width: 14),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Offline Record Stored', style: TextStyle(fontSize: 11, color: Colors.white54, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 2),
-                        Text(
-                          best != null ? '${best.accuracy.toStringAsFixed(1)}% Acc  •  ${best.qpm.toStringAsFixed(1)} QPM' : '${accuracy.toStringAsFixed(1)}% Acc  •  ${qpm.toStringAsFixed(1)} QPM',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+            // 3. SCORE & ACCURACY CARD
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF161922),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
               ),
-
-              const Spacer(),
-
-              Row(
+              child: Row(
                 children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 50,
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.white24),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 72,
+                        height: 72,
+                        child: CircularProgressIndicator(
+                          value: accuracy / 100,
+                          strokeWidth: 7,
+                          backgroundColor: Colors.white12,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            accuracy >= 90 ? const Color(0xFF10B981) : (accuracy >= 75 ? Colors.orangeAccent : Colors.redAccent),
+                          ),
                         ),
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('HOME', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                       ),
-                    ),
+                      Text('${accuracy.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SizedBox(
-                      height: 50,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          elevation: 0,
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('CHANGE QUOTA', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                      ),
-                    ),
+                  const SizedBox(width: 18),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${widget.correct} / ${widget.totalQuota} Correct', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 3),
+                      Text('Wrong Answers: ${widget.wrong}', style: TextStyle(fontSize: 13, color: widget.wrong > 0 ? Colors.redAccent : Colors.white54, fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 2),
+                      Text('Total Reaction Time: ${safeSeconds ~/ 60}m ${safeSeconds % 60}s', style: const TextStyle(fontSize: 12, color: Colors.white54)),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-            ],
-          ),
+            ),
+            const SizedBox(height: 10),
+
+            // 4. SPEED (QPM) & PACE (SPQ) METRICS
+            Row(
+              children: [
+                Expanded(child: _metricCard('SPEED (QPM)', qpm.toStringAsFixed(1), 'questions / min', Icons.bolt, const Color(0xFF6366F1))),
+                const SizedBox(width: 10),
+                Expanded(child: _metricCard('PACE (SPQ)', spq.toStringAsFixed(2), 'seconds / question', Icons.timelapse, const Color(0xFF06B6D4))),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // 5. FULL CRITERIA LADDER CARD
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF161922),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.leaderboard_rounded, color: Colors.amberAccent, size: 18),
+                      SizedBox(width: 8),
+                      Text('Benchmark Ladder for this Operation', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  ...tier.ladder.map((step) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 5),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: step.isCurrent ? const Color(0xFF6366F1).withOpacity(0.2) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: step.isCurrent ? const Color(0xFF6366F1) : Colors.transparent),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Text(step.badge, style: const TextStyle(fontSize: 14)),
+                              const SizedBox(width: 8),
+                              Text(
+                                step.rank,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: step.isCurrent ? FontWeight.bold : FontWeight.normal,
+                                  color: step.isCurrent ? Colors.white : Colors.white70,
+                                ),
+                              ),
+                              if (step.isCurrent) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: const Color(0xFF10B981), borderRadius: BorderRadius.circular(6)),
+                                  child: const Text('YOU', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
+                                ),
+                              ],
+                            ],
+                          ),
+                          Text(step.range, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: step.isCurrent ? Colors.cyanAccent : Colors.white38)),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+
+            // BOTTOM BUTTONS
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.white24),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('HOME', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6366F1),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 0,
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('CHANGE QUOTA', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
         ),
       ),
     );
@@ -2549,7 +2556,7 @@ class _ResultSummaryScreenState extends State<ResultSummaryScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+          Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 1),
           Text(unit, style: const TextStyle(fontSize: 10, color: Colors.white38)),
         ],
