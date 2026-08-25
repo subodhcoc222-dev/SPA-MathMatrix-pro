@@ -31,6 +31,132 @@ class HighScoreRecord {
   });
 }
 
+class MistakeItem {
+  final String question;
+  final int userAnswer;
+  final int correctAnswer;
+  final String diagnosis;
+
+  MistakeItem({
+    required this.question,
+    required this.userAnswer,
+    required this.correctAnswer,
+    required this.diagnosis,
+  });
+}
+
+// -------------------------------------------------------------
+// LTR & RTL VEDIC SMART AUTO-DIAGNOSTIC ENGINE
+// -------------------------------------------------------------
+class ErrorAnalyzer {
+  static String diagnose(String question, int user, int correct, {MathMode? mode}) {
+    int diff = (user - correct).abs();
+
+    // 1. 2D x 2D RTL VEDIC CROSS-MULTIPLICATION DIAGNOSIS
+    if (mode == MathMode.mul2D2D || (question.contains('×') && question.contains(' '))) {
+      final parts = question.split('×').map((s) => s.trim()).toList();
+      if (parts.length == 2) {
+        int? n1 = int.tryParse(parts[0]);
+        int? n2 = int.tryParse(parts[1]);
+        if (n1 != null && n2 != null && n1 >= 10 && n2 >= 10) {
+          int u1 = n1 % 10;
+          int u2 = n2 % 10;
+          int t1 = n1 ~/ 10;
+          int t2 = n2 ~/ 10;
+
+          int step1 = u1 * u2;
+          int step1Unit = step1 % 10;
+          int step1Carry = step1 ~/ 10;
+
+          int step2 = (t1 * u2) + (u1 * t2) + step1Carry;
+          int step2Tens = step2 % 10;
+          int step2Carry = step2 ~/ 10;
+
+          int userUnit = user % 10;
+          int userTens = (user ~/ 10) % 10;
+          int userHundreds = user ~/ 100;
+          int correctHundreds = correct ~/ 100;
+
+          if (_isSwapped(user, correct)) {
+            return "RTL Typing Swap: Vedic digits ulte sequence me type ho gaye.";
+          }
+          if (userUnit != step1Unit) {
+            return "Vedic Step 1 Error: Unit × Unit ($u1 × $u2) calculation slip.";
+          }
+          if (userTens != step2Tens) {
+            return "Vedic Step 2 Error: Cross-Product ($t1×$u2 + $u1×$t2 + $step1Carry) carry slip.";
+          }
+          if (userHundreds != correctHundreds) {
+            return "Vedic Step 3 Error: Front Product ($t1 × $t2) me Step 2 carry ($step2Carry) slip.";
+          }
+        }
+      }
+    }
+
+    // 2. TYPING TRANSPOSITION CHECK
+    if (_isSwapped(user, correct)) {
+      return "Digit Transposition: Typing karte waqt digits aage-peeche ho gaye.";
+    }
+
+    // 3. MULTIPLICATION 2D x 1D (LTR)
+    if (mode == MathMode.mul2D1D || question.contains('×')) {
+      if (diff % 10 == 0) {
+        return "LTR Tens Product Error: Tens place product me $diff ka difference.";
+      }
+      return "LTR Multiplication Slip: Intermediate product jodte waqt slip.";
+    }
+
+    // 4. SUBTRACTION (LTR: Tens first, then units)
+    if (mode == MathMode.sub2D2D || mode == MathMode.sub3D2D || mode == MathMode.sub3D3D ||
+        mode == MathMode.subComplex || question.contains('−') || question.contains('-')) {
+      if (diff == 10) {
+        return "LTR Borrow Slip: Tens place se haasil/udhar (-10) ghatana chhoot gaya.";
+      } else if (diff == 20) {
+        return "LTR Double Borrow Slip: Negative bridge cross karte waqt 20 ka farak.";
+      } else if (diff == 1 || diff == 2) {
+        return "LTR Unit Subtraction: Base value me se unit digit ghatane me ±$diff slip.";
+      } else if (user % 10 == correct % 10) {
+        return "LTR Tens Estimation Slip: Unit sahi nikala par Tens subtraction miss hua.";
+      } else {
+        return "LTR Subtraction Slip: Step-by-step mental deduction me slip.";
+      }
+    }
+
+    // 5. DIVISION (LTR: Estimation & Table Scan)
+    if (mode == MathMode.div3D1D || mode == MathMode.div3D2D || mode == MathMode.div4D2D || question.contains('÷')) {
+      if (diff == 1) {
+        return "Division Estimate Slip: Quotient estimate ±1 se miss hua.";
+      } else if (diff == 10) {
+        return "Division Place-Value Slip: Quotient place value me 10 ka scale error.";
+      } else {
+        return "Division Multiplier Slip: Table estimation / Remainder calculation error.";
+      }
+    }
+
+    // 6. ADDITION (LTR: High place values first -> Units added to accumulator)
+    if (diff == 10) {
+      return "LTR Carry Slip: Tens place accumulator me +10 carry chhoot gaya.";
+    } else if (diff == 100) {
+      return "LTR 100s Boundary Slip: Hundreds boundary par 100 ka carry miss.";
+    } else if (diff == 1 || diff == 2) {
+      return "LTR Unit Addition Slip: Accumulator me unit digits jodte waqt ±$diff slip.";
+    } else if (user % 10 == correct % 10) {
+      return "LTR High-Place Slip: Unit sahi raha par Tens/Hundreds accumulator miss hua.";
+    }
+
+    return "LTR Calculation Slip: Intermediate mental step me calculation slip.";
+  }
+
+  static bool _isSwapped(int a, int b) {
+    String sA = a.toString();
+    String sB = b.toString();
+    if (sA.length != sB.length || sA.length < 2) return false;
+    List<String> charsA = sA.split('')..sort();
+    List<String> charsB = sB.split('')..sort();
+    return charsA.join() == charsB.join();
+  }
+}
+
 class StorageService {
   static late SharedPreferences _prefs;
 
@@ -148,20 +274,20 @@ class RankEvaluator {
 
     double proCut, semiCut, interCut, begCut;
     if (group == 1) {
-      proCut = 1.6;
-      semiCut = 2.6;
-      interCut = 4.2;
-      begCut = 6.5;
+      proCut = 2.2;
+      semiCut = 3.8;
+      interCut = 6.0;
+      begCut = 9.0;
     } else if (group == 2) {
-      proCut = 2.6;
-      semiCut = 4.2;
-      interCut = 6.8;
-      begCut = 10.0;
+      proCut = 3.8;
+      semiCut = 6.5;
+      interCut = 10.0;
+      begCut = 15.0;
     } else {
-      proCut = 5.0;
-      semiCut = 7.8;
-      interCut = 11.5;
-      begCut = 16.0;
+      proCut = 7.0;
+      semiCut = 12.0;
+      interCut = 18.0;
+      begCut = 26.0;
     }
 
     bool accurate = accuracy >= 90.0;
@@ -174,14 +300,14 @@ class RankEvaluator {
       title = "PRO MATRIX MASTER";
       badge = "👑";
       color = const Color(0xFF10B981);
-      desc = "Top 0.1% SSC CGL Ranker Reflexes";
+      desc = "Top 0.1% SSC CGL Ranker Reflexes!";
       milestone = "🔥 Peak Speed Reached! Maintain this consistency.";
     } else if (spq < semiCut) {
       currentRankIndex = 1;
       title = "SEMI-PRO PERFORMER";
       badge = "⚡";
       color = const Color(0xFF6366F1);
-      desc = "Exam-Ready Speed. Highly Competitive.";
+      desc = "Exam-Ready Speed. Highly Competitive!";
       final gap = (spq - proCut).toStringAsFixed(1);
       milestone = "Target: Shave off -$gap s/Q to reach PRO (👑)";
     } else if (spq < interCut) {
@@ -189,7 +315,7 @@ class RankEvaluator {
       title = "INTERMEDIATE ASPIRANT";
       badge = "🎯";
       color = const Color(0xFF06B6D4);
-      desc = "Solid Base. Carry-over speed improving.";
+      desc = "Solid Calculation Base. Consistent practice will boost speed.";
       final gap = (spq - semiCut).toStringAsFixed(1);
       milestone = "Target: Shave off -$gap s/Q to reach SEMI-PRO (⚡)";
     } else if (spq < begCut) {
@@ -197,7 +323,7 @@ class RankEvaluator {
       title = "BEGINNER LEVEL";
       badge = "🌱";
       color = const Color(0xFFF59E0B);
-      desc = "Developing mental stamina. Cut typing delay.";
+      desc = "Developing mental stamina. Try to minimize pauses.";
       final gap = (spq - interCut).toStringAsFixed(1);
       milestone = "Target: Shave off -$gap s/Q to reach INTERMEDIATE (🎯)";
     } else {
@@ -205,14 +331,14 @@ class RankEvaluator {
       title = "NOOB (STARTING LINE)";
       badge = "🐢";
       color = const Color(0xFFEF4444);
-      desc = "High Pen-Paper reliance. Practice subconscious flow.";
+      desc = "High Pen-Paper reliance. Focus on daily short drills.";
       final gap = (spq - begCut).toStringAsFixed(1);
       milestone = "Target: Shave off -$gap s/Q to reach BEGINNER (🌱)";
     }
 
     if (!accurate) {
       color = const Color(0xFFF97316);
-      milestone = "⚠️ Accuracy is below 90%! Negative marking penalty applied.";
+      milestone = "⚠️ Accuracy is below 90%! Accuracy must precede speed.";
     }
 
     final ladder = [
@@ -920,7 +1046,7 @@ class _QuotaSelectionSheetState extends State<QuotaSelectionSheet> {
 }
 
 // -------------------------------------------------------------
-// 4. STANDARD PRACTICE SCREEN (OPTIMIZED GHOST PACER & NUMPAD)
+// 4. STANDARD PRACTICE SCREEN
 // -------------------------------------------------------------
 class StandardPracticeScreen extends StatefulWidget {
   final MathMode mode;
@@ -943,6 +1069,8 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
   String _questionText = '';
   int _correctAnswer = 0;
   String _userAnswer = '';
+
+  final List<MistakeItem> _mistakes = [];
 
   late Stopwatch _stopwatch;
   Timer? _ticker;
@@ -1058,21 +1186,28 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
         break;
       case MathMode.div3D1D:
         int divisor = _rng.nextInt(8) + 2;
-        int quotient = _rng.nextInt(89) + 11;
+        int minQuotient = (100 / divisor).ceil();
+        int maxQuotient = (999 / divisor).floor();
+        int quotient = _rng.nextInt(maxQuotient - minQuotient + 1) + minQuotient;
         int dividend = divisor * quotient;
         _correctAnswer = quotient;
         _questionText = '$dividend ÷ $divisor';
         break;
       case MathMode.div3D2D:
-        int divisor2 = _rng.nextInt(80) + 12;
-        int quotient2 = _rng.nextInt(8) + 2;
+        int divisor2 = _rng.nextInt(75) + 12;
+        int minQ2 = (100 / divisor2).ceil();
+        int maxQ2 = min(9, (999 / divisor2).floor());
+        if (maxQ2 < minQ2) maxQ2 = minQ2;
+        int quotient2 = _rng.nextInt(maxQ2 - minQ2 + 1) + minQ2;
         int dividend2 = divisor2 * quotient2;
         _correctAnswer = quotient2;
         _questionText = '$dividend2 ÷ $divisor2';
         break;
       case MathMode.div4D2D:
-        int divisor3 = _rng.nextInt(80) + 15;
-        int quotient3 = _rng.nextInt(80) + 12;
+        int divisor3 = _rng.nextInt(75) + 15;
+        int minQ3 = (1000 / divisor3).ceil();
+        int maxQ3 = (9999 / divisor3).floor();
+        int quotient3 = _rng.nextInt(maxQ3 - minQ3 + 1) + minQ3;
         int dividend3 = divisor3 * quotient3;
         _correctAnswer = quotient3;
         _questionText = '$dividend3 ÷ $divisor3';
@@ -1120,6 +1255,13 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
       setState(() => _edgeGlowColor = const Color(0xFF10B981).withOpacity(0.7));
     } else {
       _wrongCount++;
+      final diag = ErrorAnalyzer.diagnose(_questionText, entered, _correctAnswer, mode: widget.mode);
+      _mistakes.add(MistakeItem(
+        question: _questionText,
+        userAnswer: entered,
+        correctAnswer: _correctAnswer,
+        diagnosis: diag,
+      ));
       HapticFeedback.heavyImpact();
       setState(() => _edgeGlowColor = Colors.redAccent.withOpacity(0.7));
     }
@@ -1150,6 +1292,7 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
           correct: _correctCount,
           wrong: _wrongCount,
           totalSeconds: _stopwatch.elapsed.inSeconds,
+          mistakes: _mistakes,
         ),
       ),
     );
@@ -1169,7 +1312,6 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // TOP STATUS BAR
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
                 child: Row(
@@ -1196,7 +1338,6 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
                 ),
               ),
 
-              // ENHANCED GHOST PACER STRIP (THICKER BAR + MICRO TEXT)
               if (_personalBest != null)
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
@@ -1228,14 +1369,9 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      // Taller 13dp progress track with clear visual depth
                       Stack(
                         children: [
-                          Container(
-                            height: 13,
-                            decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(7)),
-                          ),
-                          // Ghost racer track (Gold glow)
+                          Container(height: 13, decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(7))),
                           FractionallySizedBox(
                             widthFactor: _ghostProgress,
                             child: Container(
@@ -1247,7 +1383,6 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
                               ),
                             ),
                           ),
-                          // User progress track (Solid Emerald)
                           FractionallySizedBox(
                             widthFactor: userProgress,
                             child: Container(
@@ -1255,9 +1390,7 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
                               decoration: BoxDecoration(
                                 color: const Color(0xFF10B981),
                                 borderRadius: BorderRadius.circular(7),
-                                boxShadow: [
-                                  BoxShadow(color: const Color(0xFF10B981).withOpacity(0.4), blurRadius: 4, spreadRadius: 0.5),
-                                ],
+                                boxShadow: [BoxShadow(color: const Color(0xFF10B981).withOpacity(0.4), blurRadius: 4, spreadRadius: 0.5)],
                               ),
                             ),
                           ),
@@ -1275,7 +1408,6 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
                   child: const Text('⇄ RTL Active (Unit ➔ Tens)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
                 ),
 
-              // CENTER QUESTION & ANSWER CONTAINER (MAXIMUM SPACE PRESERVED)
               Expanded(
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
@@ -1307,11 +1439,7 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
                             ),
                             child: Text(
                               _userAnswer.isEmpty ? '?' : _userAnswer,
-                              style: TextStyle(
-                                fontSize: 36,
-                                fontWeight: FontWeight.bold,
-                                color: _userAnswer.isEmpty ? Colors.white24 : const Color(0xFF818CF8),
-                              ),
+                              style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: _userAnswer.isEmpty ? Colors.white24 : const Color(0xFF818CF8)),
                             ),
                           ),
                         ],
@@ -1321,7 +1449,6 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
                 ),
               ),
 
-              // ERGONOMIC HALF-SCREEN NUMPAD
               NumpadWithSubmit(onKeyPress: _onKeyPress),
               const SizedBox(height: 6),
             ],
@@ -1357,6 +1484,7 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
   List<String> _chainSteps = [];
   int _correctAnswer = 0;
   String _userAnswer = '';
+  final List<MistakeItem> _mistakes = [];
 
   int _currentStepIndex = 0;
   bool _isFlashing = true;
@@ -1455,6 +1583,13 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
         setState(() => _edgeGlowColor = const Color(0xFF10B981).withOpacity(0.7));
       } else {
         _wrongCount++;
+        final diag = ErrorAnalyzer.diagnose(_chainSteps.join(' '), entered, _correctAnswer, mode: MathMode.multiFlash);
+        _mistakes.add(MistakeItem(
+          question: _chainSteps.join(' '),
+          userAnswer: entered,
+          correctAnswer: _correctAnswer,
+          diagnosis: diag,
+        ));
         HapticFeedback.heavyImpact();
         setState(() => _edgeGlowColor = Colors.redAccent.withOpacity(0.7));
       }
@@ -1492,6 +1627,7 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
           correct: _correctCount,
           wrong: _wrongCount,
           totalSeconds: pureRecallSeconds,
+          mistakes: _mistakes,
         ),
       ),
     );
@@ -1570,12 +1706,7 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
                       child: Text(
                         currentText,
                         key: ValueKey<String>('$currentText$_isFlashing'),
-                        style: TextStyle(
-                          fontSize: 64,
-                          fontWeight: FontWeight.w900,
-                          color: _isFlashing ? const Color(0xFF38BDF8) : const Color(0xFF10B981),
-                          letterSpacing: 2,
-                        ),
+                        style: TextStyle(fontSize: 64, fontWeight: FontWeight.w900, color: _isFlashing ? const Color(0xFF38BDF8) : const Color(0xFF10B981), letterSpacing: 2),
                       ),
                     ),
                   ),
@@ -1619,6 +1750,7 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
   int _num2 = 0;
   int _correctAnswer = 0;
   String _userAnswer = '';
+  final List<MistakeItem> _mistakes = [];
 
   bool _isSpeaking = false;
   final Stopwatch _activeRecallWatch = Stopwatch();
@@ -1706,6 +1838,14 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
         setState(() => _edgeGlowColor = const Color(0xFF10B981).withOpacity(0.7));
       } else {
         _wrongCount++;
+        final op = widget.isAddition ? '+' : '-';
+        final diag = ErrorAnalyzer.diagnose('$_num1 $op $_num2', entered, _correctAnswer, mode: widget.isAddition ? MathMode.audioAdd : MathMode.audioSub);
+        _mistakes.add(MistakeItem(
+          question: '$_num1 $op $_num2',
+          userAnswer: entered,
+          correctAnswer: _correctAnswer,
+          diagnosis: diag,
+        ));
         HapticFeedback.heavyImpact();
         setState(() => _edgeGlowColor = Colors.redAccent.withOpacity(0.7));
       }
@@ -1743,6 +1883,7 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
           correct: _correctCount,
           wrong: _wrongCount,
           totalSeconds: pureRecallSeconds,
+          mistakes: _mistakes,
         ),
       ),
     );
@@ -1840,6 +1981,7 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
   int _num2 = 0;
   int _correctAnswer = 0;
   String _userAnswer = '';
+  final List<MistakeItem> _mistakes = [];
 
   FlashStage _stage = FlashStage.showNum1;
   double _speedFactor = 1.0;
@@ -1937,6 +2079,14 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
         setState(() => _edgeGlowColor = const Color(0xFF10B981).withOpacity(0.7));
       } else {
         _wrongCount++;
+        final op = widget.isAddition ? '+' : '-';
+        final diag = ErrorAnalyzer.diagnose('$_num1 $op $_num2', entered, _correctAnswer, mode: widget.isAddition ? MathMode.flashAdd : MathMode.flashSub);
+        _mistakes.add(MistakeItem(
+          question: '$_num1 $op $_num2',
+          userAnswer: entered,
+          correctAnswer: _correctAnswer,
+          diagnosis: diag,
+        ));
         HapticFeedback.heavyImpact();
         setState(() => _edgeGlowColor = Colors.redAccent.withOpacity(0.7));
       }
@@ -1974,6 +2124,7 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
           correct: _correctCount,
           wrong: _wrongCount,
           totalSeconds: pureRecallSeconds,
+          mistakes: _mistakes,
         ),
       ),
     );
@@ -2203,7 +2354,7 @@ class NumpadWithSubmit extends StatelessWidget {
 }
 
 // -------------------------------------------------------------
-// 9. RESULT SUMMARY SCREEN
+// 9. RESULT SUMMARY SCREEN (WITH ERROR DIAGNOSIS)
 // -------------------------------------------------------------
 class ResultSummaryScreen extends StatefulWidget {
   final String modeName;
@@ -2212,6 +2363,7 @@ class ResultSummaryScreen extends StatefulWidget {
   final int correct;
   final int wrong;
   final int totalSeconds;
+  final List<MistakeItem> mistakes;
 
   const ResultSummaryScreen({
     super.key,
@@ -2221,6 +2373,7 @@ class ResultSummaryScreen extends StatefulWidget {
     required this.correct,
     required this.wrong,
     required this.totalSeconds,
+    this.mistakes = const [],
   });
 
   @override
@@ -2344,7 +2497,7 @@ class _ResultSummaryScreenState extends State<ResultSummaryScreen> {
                           SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              'ACCURACY PENALTY (<90%): Speed without accuracy is penalized.',
+                              'ACCURACY PENALTY (<90%): Accuracy must precede speed.',
                               style: TextStyle(fontSize: 11, color: Colors.redAccent, fontWeight: FontWeight.w600),
                             ),
                           ),
@@ -2433,7 +2586,70 @@ class _ResultSummaryScreenState extends State<ResultSummaryScreen> {
             ),
             const SizedBox(height: 12),
 
-            // 5. FULL CRITERIA LADDER CARD
+            // 5. MISTAKE REVIEW WITH CALIBRATED LTR & VEDIC DIAGNOSIS
+            if (widget.mistakes.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF161922),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.psychology_alt_rounded, color: Colors.redAccent, size: 18),
+                        SizedBox(width: 8),
+                        Text('Auto-Diagnosed Mistakes', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.redAccent)),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ...widget.mistakes.map((m) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0C0E14),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white.withOpacity(0.04)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(m.question, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                                Row(
+                                  children: [
+                                    Text('${m.userAnswer}', style: const TextStyle(fontSize: 13, color: Colors.redAccent, decoration: TextDecoration.lineThrough)),
+                                    const SizedBox(width: 6),
+                                    const Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white30),
+                                    const SizedBox(width: 6),
+                                    Text('${m.correctAnswer}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '🔍 ${m.diagnosis}',
+                              style: const TextStyle(fontSize: 10.5, color: Colors.orangeAccent, fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // 6. FULL CRITERIA LADDER CARD
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
