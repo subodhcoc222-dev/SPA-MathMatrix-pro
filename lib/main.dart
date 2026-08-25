@@ -46,13 +46,41 @@ class MistakeItem {
 }
 
 // -------------------------------------------------------------
-// LTR & RTL VEDIC SMART AUTO-DIAGNOSTIC ENGINE
+// LTR, VEDIC & MCQ SMART AUTO-DIAGNOSTIC ENGINE
 // -------------------------------------------------------------
 class ErrorAnalyzer {
   static String diagnose(String question, int user, int correct, {MathMode? mode}) {
     int diff = (user - correct).abs();
 
-    // 1. 2D x 2D RTL VEDIC CROSS-MULTIPLICATION DIAGNOSIS
+    // 1. TABLES DIAGNOSIS
+    if (mode == MathMode.table1to10 || mode == MathMode.table11to20 || mode == MathMode.table21to30) {
+      if (diff % 10 == 0) {
+        return "Table Multiple Slip: Tens boundary me 10 ka difference.";
+      } else if (diff == 1 || diff == 2) {
+        return "Unit Digit Calculation Slip: Table unit digit slip.";
+      }
+      return "Adjacent Multiple Trap: Agle/Pichle multiple ($diff diff) par click hua.";
+    }
+
+    // 2. SQUARES DIAGNOSIS
+    if (mode == MathMode.sq1to30 || mode == MathMode.sq1to40 || mode == MathMode.sq1to50) {
+      if (user % 10 == correct % 10) {
+        return "Same Unit Digit Trap: Sahi unit digit wale galat option par click hua.";
+      } else if (diff <= 100 && diff % 10 == 0) {
+        return "Square Magnitude Slip: Tens/Hundreds approximation error.";
+      }
+      return "Adjacent Base Square Slip: Kareebi square value select ho gayi.";
+    }
+
+    // 3. CUBES DIAGNOSIS
+    if (mode == MathMode.cube1to20 || mode == MathMode.cube1to30 || mode == MathMode.cube1to40) {
+      if (user % 10 == correct % 10) {
+        return "Unit Digit Trap: Same unit digit wale cube option par slip.";
+      }
+      return "Cube Value Slip: High magnitude power calculation mistake.";
+    }
+
+    // 4. 2D x 2D RTL VEDIC CROSS-MULTIPLICATION DIAGNOSIS
     if (mode == MathMode.mul2D2D || (question.contains('×') && question.contains(' '))) {
       final parts = question.split('×').map((s) => s.trim()).toList();
       if (parts.length == 2) {
@@ -93,12 +121,12 @@ class ErrorAnalyzer {
       }
     }
 
-    // 2. TYPING TRANSPOSITION CHECK
+    // 5. TYPING TRANSPOSITION CHECK
     if (_isSwapped(user, correct)) {
       return "Digit Transposition: Typing karte waqt digits aage-peeche ho gaye.";
     }
 
-    // 3. MULTIPLICATION 2D x 1D (LTR)
+    // 6. MULTIPLICATION 2D x 1D (LTR)
     if (mode == MathMode.mul2D1D || question.contains('×')) {
       if (diff % 10 == 0) {
         return "LTR Tens Product Error: Tens place product me $diff ka difference.";
@@ -106,7 +134,7 @@ class ErrorAnalyzer {
       return "LTR Multiplication Slip: Intermediate product jodte waqt slip.";
     }
 
-    // 4. SUBTRACTION (LTR: Tens first, then units)
+    // 7. SUBTRACTION (LTR)
     if (mode == MathMode.sub2D2D || mode == MathMode.sub3D2D || mode == MathMode.sub3D3D ||
         mode == MathMode.subComplex || question.contains('−') || question.contains('-')) {
       if (diff == 10) {
@@ -115,14 +143,12 @@ class ErrorAnalyzer {
         return "LTR Double Borrow Slip: Negative bridge cross karte waqt 20 ka farak.";
       } else if (diff == 1 || diff == 2) {
         return "LTR Unit Subtraction: Base value me se unit digit ghatane me ±$diff slip.";
-      } else if (user % 10 == correct % 10) {
-        return "LTR Tens Estimation Slip: Unit sahi nikala par Tens subtraction miss hua.";
       } else {
         return "LTR Subtraction Slip: Step-by-step mental deduction me slip.";
       }
     }
 
-    // 5. DIVISION (LTR: Estimation & Table Scan)
+    // 8. DIVISION (LTR)
     if (mode == MathMode.div3D1D || mode == MathMode.div3D2D || mode == MathMode.div4D2D || question.contains('÷')) {
       if (diff == 1) {
         return "Division Estimate Slip: Quotient estimate ±1 se miss hua.";
@@ -133,15 +159,13 @@ class ErrorAnalyzer {
       }
     }
 
-    // 6. ADDITION (LTR: High place values first -> Units added to accumulator)
+    // 9. ADDITION (LTR)
     if (diff == 10) {
       return "LTR Carry Slip: Tens place accumulator me +10 carry chhoot gaya.";
     } else if (diff == 100) {
       return "LTR 100s Boundary Slip: Hundreds boundary par 100 ka carry miss.";
     } else if (diff == 1 || diff == 2) {
       return "LTR Unit Addition Slip: Accumulator me unit digits jodte waqt ±$diff slip.";
-    } else if (user % 10 == correct % 10) {
-      return "LTR High-Place Slip: Unit sahi raha par Tens/Hundreds accumulator miss hua.";
     }
 
     return "LTR Calculation Slip: Intermediate mental step me calculation slip.";
@@ -263,13 +287,13 @@ class RankEvaluator {
     int group = 1;
 
     final k = modeKey.toLowerCase();
-    if (k.contains('add2d2d') || k.contains('sub2d2d') || k.contains('mul2d1d')) {
+    if (k.contains('add2d2d') || k.contains('sub2d2d') || k.contains('mul2d1d') || k.contains('table')) {
       group = 1;
     } else if (k.contains('add3d3d') || k.contains('add4x') || k.contains('subcomplex') ||
-        k.contains('mul2d2d') || k.contains('div4d2d') || k.contains('chain') || k.contains('multiflash')) {
+        k.contains('mul2d2d') || k.contains('div4d2d') || k.contains('chain') || k.contains('multiflash') || k.contains('cube')) {
       group = 3;
     } else {
-      group = 2;
+      group = 2; // Squares, 3D+2D, etc.
     }
 
     double proCut, semiCut, interCut, begCut;
@@ -498,7 +522,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 }
 
 // -------------------------------------------------------------
-// 1. HOME SCREEN
+// 1. HOME SCREEN (INCLUDES TABLES, SQUARES, CUBES)
 // -------------------------------------------------------------
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -583,6 +607,30 @@ class HomeScreen extends StatelessWidget {
                     ),
                     _buildCategoryCard(
                       context,
+                      title: 'Tables (पहाड़े)',
+                      subtitle: '1-10, 11-20, 21-30 (Timed MCQ Drills)',
+                      icon: Icons.grid_view_rounded,
+                      color: const Color(0xFFF59E0B),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubCategoryScreen(category: OperationCategory.tables))),
+                    ),
+                    _buildCategoryCard(
+                      context,
+                      title: 'Squares (वर्ग)',
+                      subtitle: '1-30, 1-40, 1-50 (Instant Recall MCQ)',
+                      icon: Icons.crop_square_rounded,
+                      color: const Color(0xFF8B5CF6),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubCategoryScreen(category: OperationCategory.squares))),
+                    ),
+                    _buildCategoryCard(
+                      context,
+                      title: 'Cubes (घन)',
+                      subtitle: '1-20, 1-30, 1-40 (Speed Memory MCQ)',
+                      icon: Icons.view_in_ar_rounded,
+                      color: const Color(0xFFE11D48),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubCategoryScreen(category: OperationCategory.cubes))),
+                    ),
+                    _buildCategoryCard(
+                      context,
                       title: 'Blind Flash Math',
                       subtitle: 'Visual Memory Flash & Multi-Step Anzan',
                       icon: Icons.flash_on_rounded,
@@ -594,7 +642,7 @@ class HomeScreen extends StatelessWidget {
                       title: 'Audio Math',
                       subtitle: 'Listening Calculation (TTS Engine)',
                       icon: Icons.headphones_rounded,
-                      color: const Color(0xFF8B5CF6),
+                      color: const Color(0xFF38BDF8),
                       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubCategoryScreen(category: OperationCategory.audioMath))),
                     ),
                     const SizedBox(height: 16),
@@ -658,7 +706,7 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-enum OperationCategory { addition, subtraction, multiplication, division, flashMath, audioMath }
+enum OperationCategory { addition, subtraction, multiplication, division, tables, squares, cubes, flashMath, audioMath }
 
 // -------------------------------------------------------------
 // 2. SUB-CATEGORY SCREEN
@@ -706,6 +754,8 @@ class SubCategoryScreen extends StatelessWidget {
   }
 
   Widget _buildModeTile(BuildContext context, ModeItem item) {
+    final bool isTimedMcq = category == OperationCategory.tables || category == OperationCategory.squares || category == OperationCategory.cubes;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -725,7 +775,9 @@ class SubCategoryScreen extends StatelessWidget {
               context: context,
               backgroundColor: const Color(0xFF161922),
               shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-              builder: (ctx) => QuotaSelectionSheet(mode: item.mode, modeName: item.title),
+              builder: (ctx) => isTimedMcq
+                  ? TimedSelectionSheet(mode: item.mode, modeName: item.title)
+                  : QuotaSelectionSheet(mode: item.mode, modeName: item.title),
             );
           },
           child: Padding(
@@ -800,6 +852,36 @@ class SubCategoryScreen extends StatelessWidget {
             ModeItem(mode: MathMode.div4D2D, title: '4-Digit ÷ 2-Digit', subtitle: 'DDDD ÷ DD (2-Digit Quotient)', icon: Icons.safety_divider, color: const Color(0xFF38BDF8), isSpecial: true),
           ],
         );
+      case OperationCategory.tables:
+        return CategoryConfig(
+          title: 'Tables (पहाड़े) MCQ',
+          desc: 'Speed recall timed drills (MCQ Mode)',
+          modes: [
+            ModeItem(mode: MathMode.table1to10, title: 'Tables 1 to 10', subtitle: 'Instant multiplication recall', icon: Icons.table_chart_rounded, color: const Color(0xFFF59E0B)),
+            ModeItem(mode: MathMode.table11to20, title: 'Tables 11 to 20', subtitle: 'Exam critical table memory', icon: Icons.table_rows_rounded, color: const Color(0xFFFB923C), isSpecial: true),
+            ModeItem(mode: MathMode.table21to30, title: 'Tables 21 to 30', subtitle: 'Advanced speed table mastery', icon: Icons.grid_on_rounded, color: const Color(0xFFEA580C), isSpecial: true),
+          ],
+        );
+      case OperationCategory.squares:
+        return CategoryConfig(
+          title: 'Squares (वर्ग) MCQ',
+          desc: 'Mental power recognition (MCQ Mode)',
+          modes: [
+            ModeItem(mode: MathMode.sq1to30, title: 'Squares 1 to 30', subtitle: 'Fundamental squares memory', icon: Icons.crop_square_rounded, color: const Color(0xFF8B5CF6)),
+            ModeItem(mode: MathMode.sq1to40, title: 'Squares 1 to 40', subtitle: 'Advanced arithmetic squares', icon: Icons.dashboard_customize_rounded, color: const Color(0xFFA855F7), isSpecial: true),
+            ModeItem(mode: MathMode.sq1to50, title: 'Squares 1 to 50', subtitle: 'Complete SSC CGL Square Matrix', icon: Icons.filter_frames_rounded, color: const Color(0xFFC084FC), isSpecial: true),
+          ],
+        );
+      case OperationCategory.cubes:
+        return CategoryConfig(
+          title: 'Cubes (घन) MCQ',
+          desc: 'High speed power recall (MCQ Mode)',
+          modes: [
+            ModeItem(mode: MathMode.cube1to20, title: 'Cubes 1 to 20', subtitle: 'Essential arithmetic cube roots', icon: Icons.view_in_ar_rounded, color: const Color(0xFFE11D48)),
+            ModeItem(mode: MathMode.cube1to30, title: 'Cubes 1 to 30', subtitle: 'High level CI & Algebra cubes', icon: Icons.layers_rounded, color: const Color(0xFFF43F5E), isSpecial: true),
+            ModeItem(mode: MathMode.cube1to40, title: 'Cubes 1 to 40', subtitle: 'Top 0.1% Master Cube Library', icon: Icons.category_rounded, color: const Color(0xFFFB7185), isSpecial: true),
+          ],
+        );
       case OperationCategory.flashMath:
         return CategoryConfig(
           title: 'Blind Flash Memory',
@@ -845,12 +927,145 @@ enum MathMode {
   sub2D2D, sub3D2D, sub3D3D, subComplex,
   mul2D1D, mul2D2D,
   div3D1D, div3D2D, div4D2D,
+  table1to10, table11to20, table21to30,
+  sq1to30, sq1to40, sq1to50,
+  cube1to20, cube1to30, cube1to40,
   flashAdd, flashSub, multiFlash,
   audioAdd, audioSub,
 }
 
 // -------------------------------------------------------------
-// 3. QUOTA MODAL
+// 3. TIME-BASED SELECTION SHEET (FOR TABLES, SQUARES, CUBES)
+// -------------------------------------------------------------
+class TimedSelectionSheet extends StatefulWidget {
+  final MathMode mode;
+  final String modeName;
+  const TimedSelectionSheet({super.key, required this.mode, required this.modeName});
+
+  @override
+  State<TimedSelectionSheet> createState() => _TimedSelectionSheetState();
+}
+
+class _TimedSelectionSheetState extends State<TimedSelectionSheet> {
+  final List<int> _minutesOptions = [2, 5, 8, 10];
+  int _selectedMinutes = 2;
+
+  @override
+  Widget build(BuildContext context) {
+    final recordKey = '${widget.mode.name}_${_selectedMinutes}m';
+    final best = StorageService.getRecord(recordKey);
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 18.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(width: 36, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10))),
+            ),
+            const SizedBox(height: 16),
+            Text(widget.modeName, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 2),
+            const Text('Choose practice duration (MCQ Speed Mode):', style: TextStyle(fontSize: 13, color: Colors.white54)),
+            const SizedBox(height: 16),
+
+            Row(
+              children: _minutesOptions.map((min) {
+                final isSelected = min == _selectedMinutes;
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedMinutes = min),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(
+                          color: isSelected ? const Color(0xFFF59E0B) : const Color(0xFF222634),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: isSelected ? Colors.amberAccent : Colors.transparent, width: 1.5),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '$min Min',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isSelected ? Colors.black : Colors.white),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0C0E14),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.06)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.emoji_events_outlined, color: Colors.amberAccent, size: 22),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Personal Best ($_selectedMinutes Min Drill)', style: const TextStyle(fontSize: 11, color: Colors.white54, fontWeight: FontWeight.w600)),
+                      Text(
+                        best != null ? '${best.accuracy.toStringAsFixed(1)}% Acc  •  ${best.qpm.toStringAsFixed(1)} QPM' : 'No records yet',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TimedMcqPracticeScreen(
+                        mode: widget.mode,
+                        modeName: widget.modeName,
+                        totalMinutes: _selectedMinutes,
+                      ),
+                    ),
+                  );
+                },
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.bolt_rounded, size: 24, color: Colors.white),
+                    SizedBox(width: 6),
+                    Text('START TIMED DRILL', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: Colors.white)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------
+// 3.5 STANDARD QUOTA SELECTION SHEET
 // -------------------------------------------------------------
 class QuotaSelectionSheet extends StatefulWidget {
   final MathMode mode;
@@ -1046,7 +1261,386 @@ class _QuotaSelectionSheetState extends State<QuotaSelectionSheet> {
 }
 
 // -------------------------------------------------------------
-// 4. STANDARD PRACTICE SCREEN
+// 4. TIMED MCQ PRACTICE SCREEN (TABLES, SQUARES, CUBES)
+// -------------------------------------------------------------
+class TimedMcqPracticeScreen extends StatefulWidget {
+  final MathMode mode;
+  final String modeName;
+  final int totalMinutes;
+
+  const TimedMcqPracticeScreen({
+    super.key,
+    required this.mode,
+    required this.modeName,
+    required this.totalMinutes,
+  });
+
+  @override
+  State<TimedMcqPracticeScreen> createState() => _TimedMcqPracticeScreenState();
+}
+
+class _TimedMcqPracticeScreenState extends State<TimedMcqPracticeScreen> {
+  final Random _rng = Random();
+
+  late int _remainingSeconds;
+  Timer? _countdownTimer;
+
+  int _correctCount = 0;
+  int _wrongCount = 0;
+  int _totalAttempted = 0;
+
+  String _questionText = '';
+  int _correctAnswer = 0;
+  List<int> _options = [];
+
+  final List<MistakeItem> _mistakes = [];
+  Color _edgeGlowColor = Colors.transparent;
+
+  @override
+  void initState() {
+    super.initState();
+    _remainingSeconds = widget.totalMinutes * 60;
+    _generateNextMcq();
+
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+      if (_remainingSeconds > 1) {
+        setState(() => _remainingSeconds--);
+      } else {
+        timer.cancel();
+        _finishTest();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  void _generateNextMcq() {
+    int ans = 0;
+    String qText = '';
+    final Set<int> distractors = {};
+
+    switch (widget.mode) {
+      case MathMode.table1to10:
+        int a = _rng.nextInt(10) + 1;
+        int b = _rng.nextInt(10) + 1;
+        ans = a * b;
+        qText = '$a × $b';
+        _addTableDistractors(distractors, a, b, ans);
+        break;
+
+      case MathMode.table11to20:
+        int a = _rng.nextInt(10) + 11;
+        int b = _rng.nextInt(10) + 1;
+        ans = a * b;
+        qText = '$a × $b';
+        _addTableDistractors(distractors, a, b, ans);
+        break;
+
+      case MathMode.table21to30:
+        int a = _rng.nextInt(10) + 21;
+        int b = _rng.nextInt(10) + 1;
+        ans = a * b;
+        qText = '$a × $b';
+        _addTableDistractors(distractors, a, b, ans);
+        break;
+
+      case MathMode.sq1to30:
+        int a = _rng.nextInt(30) + 1;
+        ans = a * a;
+        qText = '$a²';
+        _addSquareDistractors(distractors, a, ans, 30);
+        break;
+
+      case MathMode.sq1to40:
+        int a = _rng.nextInt(40) + 1;
+        ans = a * a;
+        qText = '$a²';
+        _addSquareDistractors(distractors, a, ans, 40);
+        break;
+
+      case MathMode.sq1to50:
+        int a = _rng.nextInt(50) + 1;
+        ans = a * a;
+        qText = '$a²';
+        _addSquareDistractors(distractors, a, ans, 50);
+        break;
+
+      case MathMode.cube1to20:
+        int a = _rng.nextInt(20) + 1;
+        ans = a * a * a;
+        qText = '$a³';
+        _addCubeDistractors(distractors, a, ans, 20);
+        break;
+
+      case MathMode.cube1to30:
+        int a = _rng.nextInt(30) + 1;
+        ans = a * a * a;
+        qText = '$a³';
+        _addCubeDistractors(distractors, a, ans, 30);
+        break;
+
+      case MathMode.cube1to40:
+        int a = _rng.nextInt(40) + 1;
+        ans = a * a * a;
+        qText = '$a³';
+        _addCubeDistractors(distractors, a, ans, 40);
+        break;
+
+      default:
+        ans = 100;
+        qText = '10 × 10';
+        distractors.addAll([90, 110, 102]);
+        break;
+    }
+
+    final List<int> optionList = distractors.toList();
+    optionList.shuffle(_rng);
+    final selected4 = [ans, ...optionList.take(3)]..shuffle(_rng);
+
+    setState(() {
+      _correctAnswer = ans;
+      _questionText = qText;
+      _options = selected4;
+    });
+  }
+
+  void _addTableDistractors(Set<int> set, int a, int b, int ans) {
+    if (b > 1) set.add(a * (b - 1));
+    set.add(a * (b + 1));
+    set.add(ans + 10);
+    set.add(max(1, ans - 10));
+    set.add(ans + 2);
+    set.add(max(1, ans - 2));
+    set.remove(ans);
+    while (set.length < 5) {
+      int offset = (_rng.nextInt(5) + 1) * (_rng.nextBool() ? 1 : -1);
+      int cand = max(1, ans + offset);
+      if (cand != ans) set.add(cand);
+    }
+  }
+
+  void _addSquareDistractors(Set<int> set, int a, int ans, int maxBase) {
+    if (a > 1) set.add((a - 1) * (a - 1));
+    if (a < maxBase) set.add((a + 1) * (a + 1));
+    if (a > 2) set.add((a - 2) * (a - 2));
+    if (a < maxBase - 1) set.add((a + 2) * (a + 2));
+    set.add(ans + 10);
+    set.add(max(1, ans - 10));
+    set.add(ans + 20);
+    set.remove(ans);
+    while (set.length < 5) {
+      int offset = (_rng.nextInt(20) + 1) * (_rng.nextBool() ? 10 : 2);
+      int cand = max(1, ans + offset);
+      if (cand != ans) set.add(cand);
+    }
+  }
+
+  void _addCubeDistractors(Set<int> set, int a, int ans, int maxBase) {
+    if (a > 1) set.add((a - 1) * (a - 1) * (a - 1));
+    if (a < maxBase) set.add((a + 1) * (a + 1) * (a + 1));
+    set.add(ans + 100);
+    set.add(max(1, ans - 100));
+    set.add(ans + 50);
+    set.add(max(1, ans - 50));
+    set.remove(ans);
+    while (set.length < 5) {
+      int offset = (_rng.nextInt(10) + 1) * (_rng.nextBool() ? 100 : -100);
+      int cand = max(1, ans + offset);
+      if (cand != ans) set.add(cand);
+    }
+  }
+
+  void _onOptionSelected(int choice) {
+    _totalAttempted++;
+    final bool isCorrect = choice == _correctAnswer;
+
+    if (isCorrect) {
+      _correctCount++;
+      HapticFeedback.lightImpact();
+      setState(() => _edgeGlowColor = const Color(0xFF10B981).withOpacity(0.7));
+    } else {
+      _wrongCount++;
+      final diag = ErrorAnalyzer.diagnose(_questionText, choice, _correctAnswer, mode: widget.mode);
+      _mistakes.add(MistakeItem(
+        question: _questionText,
+        userAnswer: choice,
+        correctAnswer: _correctAnswer,
+        diagnosis: diag,
+      ));
+      HapticFeedback.heavyImpact();
+      setState(() => _edgeGlowColor = Colors.redAccent.withOpacity(0.7));
+    }
+
+    Future.delayed(const Duration(milliseconds: 140), () {
+      if (mounted) setState(() => _edgeGlowColor = Colors.transparent);
+    });
+
+    _generateNextMcq();
+  }
+
+  void _finishTest() {
+    _countdownTimer?.cancel();
+    final int totalSec = widget.totalMinutes * 60;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ResultSummaryScreen(
+          modeName: '${widget.modeName} (${widget.totalMinutes}m Drill)',
+          modeKey: '${widget.mode.name}_${widget.totalMinutes}m',
+          totalQuota: max(1, _totalAttempted),
+          correct: _correctCount,
+          wrong: _wrongCount,
+          totalSeconds: totalSec,
+          mistakes: _mistakes,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final int m = _remainingSeconds ~/ 60;
+    final int s = _remainingSeconds % 60;
+    final timeStr = '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    final bool isLowTime = _remainingSeconds <= 15;
+
+    return Scaffold(
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        decoration: BoxDecoration(
+          border: Border.all(color: _edgeGlowColor, width: _edgeGlowColor == Colors.transparent ? 0 : 5.0),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // TOP BAR
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(icon: const Icon(Icons.close_rounded, size: 22), onPressed: () => Navigator.pop(context)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                      decoration: BoxDecoration(color: const Color(0xFF1E2230), borderRadius: BorderRadius.circular(20)),
+                      child: Text('Solved: $_totalAttempted', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isLowTime ? Colors.redAccent.withOpacity(0.2) : const Color(0xFF1E2230),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: isLowTime ? Colors.redAccent : Colors.transparent),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.timer_outlined, size: 15, color: isLowTime ? Colors.redAccent : Colors.cyanAccent),
+                          const SizedBox(width: 5),
+                          Text(timeStr, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isLowTime ? Colors.redAccent : Colors.cyanAccent)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // CENTER QUESTION BOX
+              Expanded(
+                flex: 4,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161922),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.white.withOpacity(0.06), width: 1.5),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('SELECT CORRECT ANSWER', style: TextStyle(fontSize: 11, color: Colors.white38, letterSpacing: 1.2, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 10),
+                        Text(
+                          _questionText,
+                          style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900, letterSpacing: 1.5, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // 4 LARGE MCQ OPTION CARDS (2x2 GRID)
+              Expanded(
+                flex: 5,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            _buildOptionButton(_options.isNotEmpty ? _options[0] : 0),
+                            const SizedBox(width: 10),
+                            _buildOptionButton(_options.length > 1 ? _options[1] : 0),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            _buildOptionButton(_options.length > 2 ? _options[2] : 0),
+                            const SizedBox(width: 10),
+                            _buildOptionButton(_options.length > 3 ? _options[3] : 0),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOptionButton(int value) {
+    return Expanded(
+      child: Material(
+        color: const Color(0xFF1E2230),
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => _onOptionSelected(value),
+          child: Container(
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.08), width: 1.5),
+            ),
+            child: Text(
+              '$value',
+              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------
+// 5. STANDARD PRACTICE SCREEN
 // -------------------------------------------------------------
 class StandardPracticeScreen extends StatefulWidget {
   final MathMode mode;
@@ -1460,7 +2054,7 @@ class _StandardPracticeScreenState extends State<StandardPracticeScreen> {
 }
 
 // -------------------------------------------------------------
-// 5. MULTI-STEP CHAIN FLASH SCREEN
+// 6. MULTI-STEP CHAIN FLASH SCREEN
 // -------------------------------------------------------------
 class MultiStepFlashScreen extends StatefulWidget {
   final int chainLength;
@@ -1724,7 +2318,7 @@ class _MultiStepFlashScreenState extends State<MultiStepFlashScreen> {
 }
 
 // -------------------------------------------------------------
-// 6. AUDIO MATH (TTS) SCREEN
+// 7. AUDIO MATH (TTS) SCREEN
 // -------------------------------------------------------------
 class AudioMathScreen extends StatefulWidget {
   final bool isAddition;
@@ -1954,7 +2548,7 @@ class _AudioMathScreenState extends State<AudioMathScreen> {
 }
 
 // -------------------------------------------------------------
-// 7. BLIND 2-NUMBER FLASH SCREEN
+// 8. BLIND 2-NUMBER FLASH SCREEN
 // -------------------------------------------------------------
 enum FlashStage { showNum1, showOp, showNum2, inputReady }
 
@@ -2241,7 +2835,7 @@ class _FlashMathScreenState extends State<FlashMathScreen> {
 }
 
 // -------------------------------------------------------------
-// 8. ERGONOMIC HALF-SCREEN NUMPAD
+// 9. ERGONOMIC HALF-SCREEN NUMPAD
 // -------------------------------------------------------------
 class NumpadWithSubmit extends StatelessWidget {
   final Function(String) onKeyPress;
@@ -2354,7 +2948,7 @@ class NumpadWithSubmit extends StatelessWidget {
 }
 
 // -------------------------------------------------------------
-// 9. RESULT SUMMARY SCREEN (WITH ERROR DIAGNOSIS)
+// 10. RESULT SUMMARY SCREEN
 // -------------------------------------------------------------
 class ResultSummaryScreen extends StatefulWidget {
   final String modeName;
@@ -2395,7 +2989,7 @@ class _ResultSummaryScreenState extends State<ResultSummaryScreen> {
     final double qpm = (widget.totalQuota / safeSeconds) * 60.0;
     final double spq = safeSeconds / widget.totalQuota;
 
-    final String sessionKey = '${widget.modeKey}_${widget.totalQuota}';
+    final String sessionKey = widget.modeKey;
     final currentRecord = HighScoreRecord(
       correct: widget.correct,
       total: widget.totalQuota,
@@ -2415,7 +3009,7 @@ class _ResultSummaryScreenState extends State<ResultSummaryScreen> {
     final double qpm = (widget.totalQuota / safeSeconds) * 60.0;
     final double spq = safeSeconds / widget.totalQuota;
 
-    final sessionKey = '${widget.modeKey}_${widget.totalQuota}';
+    final sessionKey = widget.modeKey;
     final best = StorageService.getRecord(sessionKey);
 
     final tier = RankEvaluator.evaluate(widget.modeKey, spq, accuracy);
@@ -2448,7 +3042,7 @@ class _ResultSummaryScreenState extends State<ResultSummaryScreen> {
                   ),
               ],
             ),
-            Text('${widget.modeName} (${widget.totalQuota} Questions)', style: const TextStyle(fontSize: 13, color: Colors.white54)),
+            Text('${widget.modeName} (${widget.totalQuota} Attempts)', style: const TextStyle(fontSize: 13, color: Colors.white54)),
             const SizedBox(height: 14),
 
             // 1. HERO RANK BADGE CARD
@@ -2568,7 +3162,7 @@ class _ResultSummaryScreenState extends State<ResultSummaryScreen> {
                       const SizedBox(height: 3),
                       Text('Wrong Answers: ${widget.wrong}', style: TextStyle(fontSize: 13, color: widget.wrong > 0 ? Colors.redAccent : Colors.white54, fontWeight: FontWeight.w500)),
                       const SizedBox(height: 2),
-                      Text('Total Reaction Time: ${safeSeconds ~/ 60}m ${safeSeconds % 60}s', style: const TextStyle(fontSize: 12, color: Colors.white54)),
+                      Text('Total Drill Time: ${safeSeconds ~/ 60}m ${safeSeconds % 60}s', style: const TextStyle(fontSize: 12, color: Colors.white54)),
                     ],
                   ),
                 ],
@@ -2740,7 +3334,7 @@ class _ResultSummaryScreenState extends State<ResultSummaryScreen> {
                         elevation: 0,
                       ),
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('CHANGE QUOTA', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                      child: const Text('CHANGE DURATION', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                     ),
                   ),
                 ),
