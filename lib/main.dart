@@ -252,7 +252,7 @@ class StorageService {
 }
 
 // -------------------------------------------------------------
-// 5-TIER RANKING SYSTEM
+// 5-TIER RANKING SYSTEM (SEPARATED KEYPAD VS MCQ BENCHMARKS)
 // -------------------------------------------------------------
 class TierInfo {
   final String title;
@@ -284,34 +284,45 @@ class LadderStep {
 
 class RankEvaluator {
   static TierInfo evaluate(String modeKey, double spq, double accuracy) {
-    int group = 1;
-
     final k = modeKey.toLowerCase();
-    if (k.contains('add2d2d') || k.contains('sub2d2d') || k.contains('mul2d1d') || k.contains('table')) {
-      group = 1;
-    } else if (k.contains('add3d3d') || k.contains('add4x') || k.contains('subcomplex') ||
-        k.contains('mul2d2d') || k.contains('div4d2d') || k.contains('chain') || k.contains('multiflash') || k.contains('cube')) {
-      group = 3;
-    } else {
-      group = 2; // Squares, 3D+2D, etc.
-    }
-
     double proCut, semiCut, interCut, begCut;
-    if (group == 1) {
-      proCut = 2.2;
-      semiCut = 3.8;
-      interCut = 6.0;
-      begCut = 9.0;
-    } else if (group == 2) {
-      proCut = 3.8;
-      semiCut = 6.5;
-      interCut = 10.0;
-      begCut = 15.0;
-    } else {
-      proCut = 7.0;
-      semiCut = 12.0;
-      interCut = 18.0;
-      begCut = 26.0;
+
+    // --- 1. MCQ TABLES BENCHMARKS ---
+    if (k.contains('table1to10')) {
+      proCut = 1.0; semiCut = 1.6; interCut = 2.5; begCut = 3.8;
+    } else if (k.contains('table11to20')) {
+      proCut = 1.3; semiCut = 2.0; interCut = 3.2; begCut = 4.6;
+    } else if (k.contains('table21to30')) {
+      proCut = 1.6; semiCut = 2.5; interCut = 3.8; begCut = 5.5;
+    } 
+    // --- 2. MCQ SQUARES BENCHMARKS ---
+    else if (k.contains('sq1to30')) {
+      proCut = 1.2; semiCut = 1.8; interCut = 2.8; begCut = 4.2;
+    } else if (k.contains('sq1to40')) {
+      proCut = 1.4; semiCut = 2.2; interCut = 3.4; begCut = 5.0;
+    } else if (k.contains('sq1to50')) {
+      proCut = 1.6; semiCut = 2.6; interCut = 4.0; begCut = 6.0;
+    }
+    // --- 3. MCQ CUBES BENCHMARKS ---
+    else if (k.contains('cube1to20')) {
+      proCut = 1.3; semiCut = 2.0; interCut = 3.2; begCut = 4.8;
+    } else if (k.contains('cube1to30')) {
+      proCut = 1.5; semiCut = 2.4; interCut = 3.8; begCut = 5.5;
+    } else if (k.contains('cube1to40')) {
+      proCut = 1.8; semiCut = 2.8; interCut = 4.4; begCut = 6.5;
+    }
+    // --- 4. STANDARD KEYPAD GROUP A (BASIC) ---
+    else if (k.contains('add2d2d') || k.contains('sub2d2d') || k.contains('mul2d1d')) {
+      proCut = 2.2; semiCut = 3.8; interCut = 6.0; begCut = 9.0;
+    }
+    // --- 5. STANDARD KEYPAD GROUP C (HEAVY ARITHMETIC) ---
+    else if (k.contains('add3d3d') || k.contains('add4x') || k.contains('subcomplex') ||
+        k.contains('mul2d2d') || k.contains('div4d2d') || k.contains('chain') || k.contains('multiflash')) {
+      proCut = 7.0; semiCut = 12.0; interCut = 18.0; begCut = 26.0;
+    }
+    // --- 6. STANDARD KEYPAD GROUP B (MODERATE) ---
+    else {
+      proCut = 3.8; semiCut = 6.5; interCut = 10.0; begCut = 15.0;
     }
 
     bool accurate = accuracy >= 90.0;
@@ -410,7 +421,7 @@ class MathTrainerApp extends StatelessWidget {
 }
 
 // -------------------------------------------------------------
-// SPLASH SCREEN
+// SPLASH SCREEN (3 SECONDS DURATION + SUBODH ANEKAR BRANDING)
 // -------------------------------------------------------------
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -435,7 +446,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     _animController.forward();
 
-    Timer(const Duration(milliseconds: 1800), () {
+    // Exactly 3 seconds (3000ms) splash screen display
+    Timer(const Duration(milliseconds: 3000), () {
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -467,48 +479,77 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // CIRCULAR AVATAR ICON CONTAINER
                 Container(
-                  width: 120,
-                  height: 120,
+                  width: 125,
+                  height: 125,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     boxShadow: [
-                      BoxShadow(color: const Color(0xFF6366F1).withOpacity(0.35), blurRadius: 30, spreadRadius: 8),
+                      BoxShadow(
+                        color: const Color(0xFF6366F1).withOpacity(0.4),
+                        blurRadius: 32,
+                        spreadRadius: 8,
+                      ),
                     ],
-                    border: Border.all(color: const Color(0xFF6366F1), width: 2.5),
+                    border: Border.all(color: const Color(0xFF6366F1), width: 3.0),
                   ),
                   child: ClipOval(
                     child: Image.asset(
-                      'icon.png',
+                      'assets/icon.png',
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: const Color(0xFF161922),
-                        child: const Icon(Icons.bolt_rounded, size: 60, color: Color(0xFF6366F1)),
-                      ),
+                      errorBuilder: (context, error, stackTrace) {
+                        return Image.asset(
+                          'icon.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, err, st) => Container(
+                            color: const Color(0xFF161922),
+                            child: const Icon(Icons.bolt_rounded, size: 64, color: Color(0xFF6366F1)),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
                 const Text(
                   'SPA MATHS MATRIX',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: 1.5, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 6),
-                const Text('Advanced Speed Calculation Engine', style: TextStyle(fontSize: 12, color: Colors.white54)),
+                const Text(
+                  'Advanced Speed Calculation Engine',
+                  style: TextStyle(fontSize: 12, color: Colors.white54),
+                ),
                 const SizedBox(height: 60),
+
+                // BRANDING BADGE WITH FULL NAME
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
                   decoration: BoxDecoration(
                     color: const Color(0xFF161922),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withOpacity(0.06)),
+                    border: Border.all(color: Colors.white.withOpacity(0.08)),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.code_rounded, size: 16, color: Color(0xFF10B981)),
                       SizedBox(width: 8),
-                      Text('Created & Powered by Subodh', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white70)),
+                      Text(
+                        'Created & Powered by Subodh Anekar',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white70,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1519,7 +1560,6 @@ class _TimedMcqPracticeScreenState extends State<TimedMcqPracticeScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // TOP BAR
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
                 child: Row(
@@ -1550,7 +1590,6 @@ class _TimedMcqPracticeScreenState extends State<TimedMcqPracticeScreen> {
                 ),
               ),
 
-              // CENTER QUESTION BOX
               Expanded(
                 flex: 4,
                 child: Container(
@@ -1576,7 +1615,6 @@ class _TimedMcqPracticeScreenState extends State<TimedMcqPracticeScreen> {
                 ),
               ),
 
-              // 4 LARGE MCQ OPTION CARDS (2x2 GRID)
               Expanded(
                 flex: 5,
                 child: Padding(
